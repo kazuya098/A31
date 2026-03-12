@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.competition.competition.mapper.IndividualMapper">
+
+    <resultMap id="BaseResultMap" type="com.competition.competition.entity.Individual">
+        <id column="id" property="id"/>
+        <result column="species_type" property="speciesType"/>
+        <result column="algorithm_identity_id" property="algorithmIdentityId"/>
+        <result column="cover_image_path" property="coverImagePath"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO individual (species_type, algorithm_identity_id, cover_image_path, created_at, updated_at)
+        VALUES (#{speciesType, jdbcType=VARCHAR}, #{algorithmIdentityId}, #{coverImagePath}, NOW(), NOW())
+    </insert>
+
+    <select id="findById" resultMap="BaseResultMap">
+        SELECT id, species_type, algorithm_identity_id, cover_image_path, created_at, updated_at
+        FROM individual
+        WHERE id = #{id}
+    </select>
+
+    <select id="findByAlgorithmIdentityIdAndSpeciesType" resultMap="BaseResultMap">
+        SELECT id, species_type, algorithm_identity_id, cover_image_path, created_at, updated_at
+        FROM individual
+        WHERE algorithm_identity_id = #{algorithmIdentityId} AND species_type = #{speciesType}
+    </select>
+
+    <select id="listBySpeciesType" resultMap="BaseResultMap">
+        SELECT id, species_type, algorithm_identity_id, cover_image_path, created_at, updated_at
+        FROM individual
+        WHERE species_type = #{speciesType}
+        ORDER BY id
+    </select>
+
+    <update id="updateCover">
+        UPDATE individual
+        SET cover_image_path = #{coverImagePath}, updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+</mapper>

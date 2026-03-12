@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.competition.competition.mapper.RecognitionRecordMapper">
+
+    <resultMap id="BaseResultMap" type="com.competition.competition.entity.RecognitionRecord">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="image_path" property="imagePath"/>
+        <result column="status" property="status"/>
+        <result column="identity_id" property="identityId"/>
+        <result column="confidence" property="confidence"/>
+        <result column="type" property="type"/>
+        <result column="operation_status" property="operationStatus"/>
+        <result column="individual_id" property="individualId"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO recognition_record
+            (user_id, image_path, status, identity_id, confidence, type, operation_status, individual_id, created_at, updated_at)
+        VALUES
+            (#{userId}, #{imagePath}, #{status, jdbcType=VARCHAR}, #{identityId}, #{confidence},
+             #{type, jdbcType=VARCHAR}, #{operationStatus, jdbcType=VARCHAR}, #{individualId}, NOW(), NOW())
+    </insert>
+
+    <select id="findById" resultMap="BaseResultMap">
+        SELECT id, user_id, image_path, status, identity_id, confidence, type, operation_status, individual_id, created_at, updated_at
+        FROM recognition_record
+        WHERE id = #{id}
+    </select>
+
+    <update id="updateResultAndIndividual">
+        UPDATE recognition_record
+        SET status = #{status}, identity_id = #{identityId}, confidence = #{confidence}, individual_id = #{individualId}, updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <select id="list" resultMap="BaseResultMap">
+        SELECT id, user_id, image_path, status, identity_id, confidence, type, operation_status, individual_id, created_at, updated_at
+        FROM recognition_record
+        <where>
+            <if test="type != null and type != ''">
+                AND type = #{type}
+            </if>
+            <if test="startTime != null">
+                AND created_at &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND created_at &lt;= #{endTime}
+            </if>
+            <if test="recordId != null">
+                AND id = #{recordId}
+            </if>
+        </where>
+        ORDER BY created_at DESC
+    </select>
+</mapper>

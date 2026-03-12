@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.competition.competition.mapper.IndividualImageMapper">
+
+    <resultMap id="BaseResultMap" type="com.competition.competition.entity.IndividualImage">
+        <id column="id" property="id"/>
+        <result column="individual_id" property="individualId"/>
+        <result column="image_path" property="imagePath"/>
+        <result column="shot_time" property="shotTime"/>
+        <result column="recognition_record_id" property="recognitionRecordId"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO individual_image (individual_id, image_path, shot_time, recognition_record_id, created_at)
+        VALUES (#{individualId}, #{imagePath}, #{shotTime}, #{recognitionRecordId}, NOW())
+    </insert>
+
+    <select id="listByIndividualIdOrderByShotTime" resultMap="BaseResultMap">
+        SELECT id, individual_id, image_path, shot_time, recognition_record_id, created_at
+        FROM individual_image
+        WHERE individual_id = #{individualId}
+        ORDER BY shot_time ASC, created_at ASC
+    </select>
+</mapper>
