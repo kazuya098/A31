@@ -1,14 +1,22 @@
 package com.competition.competition.config;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.resource.ResourceResolver;
+import org.springframework.web.servlet.resource.ResourceResolverChain;
+
+import java.util.List;
 
 /**
  * Web 相关配置。
@@ -19,6 +27,14 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
+    @Override
+    public void addViewControllers(ViewControllerRegistry registry) {
+        // 将根路径 "/" 重定向到 "/api/health"
+        registry.addRedirectViewController("/", "/api/health");
+
+        // 或者返回一个简单的欢迎信息
+        // registry.addViewController("/").setViewName("forward:/api/health");
+    }
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
@@ -50,5 +66,23 @@ public class WebConfig implements WebMvcConfigurer {
         // 映射/uploads/目录到/static/uploads/路径，支持远程访问图片
         registry.addResourceHandler("/static/uploads/**")
                 .addResourceLocations("file:./uploads/");
+
+        // 处理 favicon.ico 请求
+        registry.addResourceHandler("/**.ico", "/favicon.ico")
+                .addResourceLocations("classpath:/static/")
+                .resourceChain(true)
+                .addResolver(new ResourceResolver() {
+                    @Override
+                    public Resource resolveResource(HttpServletRequest request, String requestPath, List<? extends Resource> locations, ResourceResolverChain chain) {
+                        Resource resolved = chain.resolveResource(request, requestPath, locations);
+                        return resolved != null ? resolved : new ClassPathResource("static/empty.ico");
+                    }
+
+                    @Override
+                    public String resolveUrlPath(String resourcePath, List<? extends Resource> locations, ResourceResolverChain chain) {
+                        String path = chain.resolveUrlPath(resourcePath, locations);
+                        return path != null ? path : "/static/empty.ico";
+                    }
+                });
     }
 }
