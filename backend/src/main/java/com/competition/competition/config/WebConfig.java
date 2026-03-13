@@ -7,6 +7,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
@@ -43,5 +44,11 @@ public class WebConfig implements WebMvcConfigurer {
         reg.addUrlPatterns("/api/*");
         reg.setOrder(1);
         return reg;
+    }
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // 映射/uploads/目录到/static/uploads/路径，支持远程访问图片
+        registry.addResourceHandler("/static/uploads/**")
+                .addResourceLocations("file:./uploads/");
     }
 }

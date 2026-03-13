@@ -39,6 +39,18 @@ public class RecognitionService {
 
     @Value("${upload.path:./uploads}")
     private String uploadPath;
+    @Value("${server.port:8080}")
+    /* 将本地文件路径转换为可访问的 URL */
+    private String toAccessibleUrl(String localPath) {
+        if (localPath == null || localPath.isEmpty()) {
+            return null;
+        }
+        // 提取文件名
+        String filename = Paths.get(localPath).getFileName().toString();
+        // 返回相对 URL 路径，前端拼接后端域名即可访问
+        return "/static/uploads/" + filename;
+    }
+
 
     /** 上传图片 → 落库 → 调算法 → 归并个体/个体图片 → 返回结果（含报告用字段） */
     public RecognitionResultDto submit(MultipartFile file, String type, Long operatorUserId) {
@@ -72,7 +84,7 @@ public class RecognitionService {
                     .identityId(algo.getIdentityId())
                     .confidence(algo.getConfidence())
                     .message("识别成功")
-                    .imagePath(savedPath)
+                    .imagePath(toAccessibleUrl(savedPath))
                     .recognitionTime(LocalDateTime.now())
                     .individualId(individual.getId())
                     .build();
@@ -82,7 +94,7 @@ public class RecognitionService {
                     .taskId(String.valueOf(record.getId()))
                     .status("failed")
                     .message("识别失败")
-                    .imagePath(savedPath)
+                    .imagePath(toAccessibleUrl(savedPath))
                     .recognitionTime(LocalDateTime.now())
                     .build();
         }
@@ -136,7 +148,7 @@ public class RecognitionService {
                     .identityId(rec.getIdentityId())
                     .confidence(rec.getConfidence())
                     .message(rec.getStatus())
-                    .imagePath(rec.getImagePath())
+                    .imagePath(toAccessibleUrl(rec.getImagePath()))
                     .recognitionTime(rec.getCreatedAt())
                     .individualId(rec.getIndividualId())
                     .build();
@@ -166,7 +178,7 @@ public class RecognitionService {
                     .recordId(r.getId())
                     .recognitionResult(r.getIndividualId() != null ? String.valueOf(r.getIndividualId()) : r.getIdentityId())
                     .confidence(r.getConfidence())
-                    .imagePath(r.getImagePath())
+                    .imagePath(toAccessibleUrl(r.getImagePath()))
                     .recognitionTime(r.getCreatedAt())
                     .operatorName(operatorName)
                     .type(r.getType())
@@ -195,7 +207,7 @@ public class RecognitionService {
             List<IndividualReportDto.ImageItemDto> items = images.stream()
                     .map(img -> IndividualReportDto.ImageItemDto.builder()
                             .imageId(img.getId())
-                            .imagePath(img.getImagePath())
+                            .imagePath(toAccessibleUrl(img.getImagePath()))
                             .shotTime(img.getShotTime())
                             .recognitionRecordId(img.getRecognitionRecordId())
                             .build())
@@ -203,7 +215,7 @@ public class RecognitionService {
             return IndividualReportDto.builder()
                     .individualId(ind.getId())
                     .speciesType(ind.getSpeciesType())
-                    .coverImagePath(ind.getCoverImagePath())
+                    .coverImagePath(toAccessibleUrl(ind.getCoverImagePath()))
                     .images(items)
                     .build();
         });
