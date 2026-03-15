@@ -4,7 +4,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.core.annotation.Order;
 import org.springframework.lang.NonNull;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -15,14 +14,13 @@ import java.util.List;
  * 校验请求头 X-Auth-Token，将当前用户 id 放入 request 属性，供 Controller 使用。
  * 白名单路径不校验 token。
  */
-@Order(1)
 public class AuthFilter extends OncePerRequestFilter {
 
     private static final String HEADER_TOKEN = "X-Auth-Token";
     private static final String ATTR_USER_ID = "currentUserId";
 
     private final AuthTokenStore tokenStore;
-    private final List<String> permitPaths = List.of("/api/auth/login", "/api/health");
+    private final List<String> permitPaths = List.of("/api/auth/login", "/api/health");// 白名单路径
 
     public AuthFilter(AuthTokenStore tokenStore) {
         this.tokenStore = tokenStore;

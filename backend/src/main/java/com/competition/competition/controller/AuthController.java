@@ -1,6 +1,7 @@
 package com.competition.competition.controller;
 
 import com.competition.competition.common.Result;
+import com.competition.competition.common.ResultCode;
 import com.competition.competition.dto.LoginRequest;
 import com.competition.competition.dto.LoginResponse;
 import com.competition.competition.dto.UserProfileDto;
@@ -22,7 +23,7 @@ public class AuthController {
     @PostMapping("/login")
     public Result<LoginResponse> login(@Valid @RequestBody LoginRequest req) {
         Optional<LoginResponse> res = authService.login(req.getUsername(), req.getPassword());
-        return res.map(Result::ok).orElseGet(() -> Result.fail(401, "用户名或密码错误"));
+        return res.map(Result::ok).orElseGet(() -> Result.fail(ResultCode.UNAUTHORIZED, "用户名或密码错误"));
     }
 
     @PostMapping("/logout")
@@ -36,6 +37,6 @@ public class AuthController {
     public Result<UserProfileDto> current(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("currentUserId");
         Optional<UserProfileDto> user = authService.currentUser(userId);
-        return user.map(Result::ok).orElseGet(() -> Result.fail(401, "未登录"));
+        return user.map(Result::ok).orElseGet(() -> Result.fail(ResultCode.UNAUTHORIZED, "未登录"));
     }
 }

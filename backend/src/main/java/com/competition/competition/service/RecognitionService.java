@@ -39,8 +39,8 @@ public class RecognitionService {
 
     @Value("${upload.path:./uploads}")
     private String uploadPath;
-    @Value("${server.port:8080}")
-    /* 将本地文件路径转换为可访问的 URL */
+
+    /** 将本地文件路径转换为可访问的 URL */
     private String toAccessibleUrl(String localPath) {
         if (localPath == null || localPath.isEmpty()) {
             return null;
@@ -53,43 +53,92 @@ public class RecognitionService {
 
 
     /** 上传图片 → 落库 → 调算法 → 归并个体/个体图片 → 返回结果（含报告用字段） */
+    // RecognitionService.java 第 56-100 行
     public RecognitionResultDto submit(MultipartFile file, String type, Long operatorUserId) {
+
+        // ====== 阶段 1：保存图片到本地 ======
         String savedPath = saveFile(file);
+        // 调用 saveFile() 方法（第 102-121 行）
+        // 1. 创建上传目录：./uploads/
+        // 2. 生成唯一文件名：UUID + 原扩展名
+        // 3. 保存文件：file.transferTo(target.toFile())
+        // 4. 返回路径
+
+        // 确定识别类型
         String recordType = "human".equalsIgnoreCase(type) ? "human" : "non_human";
 
+        // ====== 阶段 2：创建识别记录（数据库落库）======
         RecognitionRecord record = new RecognitionRecord();
-        record.setUserId(operatorUserId);
-        record.setImagePath(savedPath);
-        record.setStatus("processing");
-        record.setType(recordType);
+        record.setUserId(operatorUserId);           // 1 (admin 的 ID)
+        record.setImagePath(savedPath);             // 图片保存路径
+        record.setStatus("processing");             // 状态：处理中
+        record.setType(recordType);                 // "human"
         record.setOperationStatus("正常");
-        recordMapper.insert(record);
+        recordMapper.insert(record);                // ← 插入数据库
 
+
+        // ====== 阶段 3：调用 Python 算法服务（关键！）======
         AlgorithmClientService.AlgorithmResult algo = algorithmClient.recognize(file);
+        // 这里就是调用 AlgorithmClientService 的地方！
+
+
+        // ====== 阶段 4：处理算法返回结果 ======
         if (algo != null) {
-            Individual individual = findOrCreateIndividual(algo.getIdentityId(), recordType, savedPath);
-            recordMapper.updateResultAndIndividual(record.getId(), "done", algo.getIdentityId(), algo.getConfidence(), individual.getId());
+            // 识别成功
+
+            // 4.1 查找或创建个体（归并同一生物）
+            Individual individual = findOrCreateIndividual(
+                    algo.getIdentityId(),    // 算法返回的身份 ID，如 "person_001"
+                    recordType,              // "human"
+                    savedPath                // 图片路径
+            );
+
+            // 4.2 更新识别记录的状态和结果
+            recordMapper.updateResultAndIndividual(
+                    record.getId(),          // 1
+                    "done",                  // 状态：已完成
+                    algo.getIdentityId(),    // "person_001"
+                    null,                    // confidence（置信度，暂不保存）
+                    individual.getId()       // 个体 ID
+            );
+            // SQL: UPDATE recognition_record SET status='done', identity_id='person_001', individual_id=? WHERE id=1
+
+            // 4.3 创建个体图片记录（关联到个体）
             IndividualImage img = new IndividualImage();
             img.setIndividualId(individual.getId());
             img.setImagePath(savedPath);
             img.setShotTime(LocalDate.now());
             img.setRecognitionRecordId(record.getId());
             individualImageMapper.insert(img);
+            // SQL: INSERT INTO individual_image (...) VALUES (...)
+
+            // 4.4 如果个体没有封面图，设置封面图
             if (individual.getCoverImagePath() == null || individual.getCoverImagePath().isBlank()) {
                 updateIndividualCover(individual.getId(), savedPath);
             }
+
+            // 4.5 构建并返回 DTO
             return RecognitionResultDto.builder()
-                    .taskId(String.valueOf(record.getId()))
-                    .status("done")
-                    .identityId(algo.getIdentityId())
-                    .confidence(algo.getConfidence())
+                    .taskId(String.valueOf(record.getId()))      // "1"
+                    .status("done")                               // "done"
+                    .identityId(algo.getIdentityId())             // "person_001"
                     .message("识别成功")
-                    .imagePath(toAccessibleUrl(savedPath))
+                    .imagePath(toAccessibleUrl(savedPath))        // "/static/uploads/a1b2c3d4...jpg"
                     .recognitionTime(LocalDateTime.now())
                     .individualId(individual.getId())
                     .build();
+
         } else {
-            recordMapper.updateResultAndIndividual(record.getId(), "failed", null, null, null);
+            // 识别失败
+
+            recordMapper.updateResultAndIndividual(
+                    record.getId(),
+                    "failed",
+                    null,
+                    null,
+                    null
+            );
+
             return RecognitionResultDto.builder()
                     .taskId(String.valueOf(record.getId()))
                     .status("failed")
@@ -99,6 +148,7 @@ public class RecognitionService {
                     .build();
         }
     }
+
 
     private String saveFile(MultipartFile file) {
         try {
@@ -146,7 +196,6 @@ public class RecognitionService {
                     .taskId(String.valueOf(rec.getId()))
                     .status(rec.getStatus())
                     .identityId(rec.getIdentityId())
-                    .confidence(rec.getConfidence())
                     .message(rec.getStatus())
                     .imagePath(toAccessibleUrl(rec.getImagePath()))
                     .recognitionTime(rec.getCreatedAt())
@@ -177,7 +226,6 @@ public class RecognitionService {
             return RecordReportDto.builder()
                     .recordId(r.getId())
                     .recognitionResult(r.getIndividualId() != null ? String.valueOf(r.getIndividualId()) : r.getIdentityId())
-                    .confidence(r.getConfidence())
                     .imagePath(toAccessibleUrl(r.getImagePath()))
                     .recognitionTime(r.getCreatedAt())
                     .operatorName(operatorName)

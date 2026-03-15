@@ -1,6 +1,7 @@
 package com.competition.competition.controller;
 
 import com.competition.competition.common.Result;
+import com.competition.competition.common.ResultCode;
 import com.competition.competition.dto.ChangePasswordRequest;
 import com.competition.competition.dto.UserProfileDto;
 import com.competition.competition.service.UserService;
@@ -23,7 +24,7 @@ public class UserController {
     @GetMapping("/profile")
     public Result<UserProfileDto> profile(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("currentUserId");
-        return userService.getProfile(userId).map(Result::ok).orElseGet(() -> Result.fail(401, "未登录"));
+        return userService.getProfile(userId).map(Result::ok).orElseGet(() -> Result.fail(ResultCode.UNAUTHORIZED, "未登录"));
     }
 
     @PutMapping("/password")
@@ -32,7 +33,7 @@ public class UserController {
         if (userService.updatePassword(userId, req.getOldPassword(), req.getNewPassword())) {
             return Result.ok(null);
         }
-        return Result.fail(400, "原密码错误或修改失败");
+        return Result.fail(ResultCode.BAD_REQUEST, "原密码错误或修改失败");
     }
 
     @PostMapping("/restore-data")

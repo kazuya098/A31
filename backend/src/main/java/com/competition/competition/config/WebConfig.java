@@ -7,9 +7,13 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import reactor.netty.http.client.HttpClient;
+
+import java.time.Duration;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -22,7 +26,7 @@ import java.util.List;
  * Web 相关配置。
  * 【需填充】：
  * - CORS：若前端与后端不同源，在 addCorsMappings 里配置允许的 origin、method、header。
- * - RestTemplate：用于调用队友 Python 算法服务的 HTTP 客户端，可按需设置超时、拦截器等。
+ * - WebClient：用于调用算法推理服务的响应式 HTTP 客户端（替代 RestTemplate，性能更好），已配置连接/响应超时。
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
@@ -44,9 +48,16 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowCredentials(false);
     }
 
+    /**
+     * 算法服务用的 WebClient：连接与响应超时 30 秒，供 AlgorithmClientService 调用推理接口。
+     */
     @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
+    public WebClient webClient() {
+        HttpClient httpClient = HttpClient.create()
+                .responseTimeout(Duration.ofSeconds(30));
+        return WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .build();
     }
 
     @Bean

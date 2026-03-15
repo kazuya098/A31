@@ -1,6 +1,7 @@
 package com.competition.competition.controller;
 
 import com.competition.competition.common.Result;
+import com.competition.competition.common.ResultCode;
 import com.competition.competition.dto.*;
 import com.competition.competition.service.RecognitionService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,7 +32,7 @@ public class RecognitionController {
             @RequestParam(value = "type", defaultValue = "human") String type,
             HttpServletRequest request) {
         if (file.isEmpty()) {
-            return Result.fail(400, "请选择图片文件");
+            return Result.fail(ResultCode.BAD_REQUEST, "请选择图片文件");
         }
         Long operatorId = (Long) request.getAttribute("currentUserId");
         RecognitionResultDto dto = recognitionService.submit(file, type, operatorId);
@@ -41,7 +42,7 @@ public class RecognitionController {
     @GetMapping("/result/{taskId}")
     public Result<RecognitionResultDto> result(@PathVariable String taskId) {
         Optional<RecognitionResultDto> opt = recognitionService.getResult(taskId);
-        return opt.map(Result::ok).orElseGet(() -> Result.fail(404, "任务不存在"));
+        return opt.map(Result::ok).orElseGet(() -> Result.fail(ResultCode.NOT_FOUND, "任务不存在"));
     }
 
     /** 识别记录列表：按识别时间、识别编号、类型筛选 */
@@ -60,7 +61,7 @@ public class RecognitionController {
     public Result<RecordReportDto> recordReport(@PathVariable Long id) {
         return recognitionService.getRecordReport(id)
                 .map(Result::ok)
-                .orElseGet(() -> Result.fail(404, "记录不存在"));
+                .orElseGet(() -> Result.fail(ResultCode.NOT_FOUND, "记录不存在"));
     }
 
     /** 同一物种个体列表：id + 封面图 + 详细报告链接用 individualId */
@@ -75,6 +76,6 @@ public class RecognitionController {
     public Result<IndividualReportDto> individualReport(@PathVariable Long individualId) {
         return recognitionService.getIndividualReport(individualId)
                 .map(Result::ok)
-                .orElseGet(() -> Result.fail(404, "个体不存在"));
+                .orElseGet(() -> Result.fail(ResultCode.NOT_FOUND, "个体不存在"));
     }
 }
