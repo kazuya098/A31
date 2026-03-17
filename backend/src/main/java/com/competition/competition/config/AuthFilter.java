@@ -20,7 +20,7 @@ public class AuthFilter extends OncePerRequestFilter {
     private static final String ATTR_USER_ID = "currentUserId";
 
     private final AuthTokenStore tokenStore;
-    private final List<String> permitPaths = List.of("/api/auth/login", "/api/health");// 白名单路径
+    private final List<String> permitPaths = List.of("/api/auth/login", "/api/auth/register", "/api/health");// 白名单路径
 
     public AuthFilter(AuthTokenStore tokenStore) {
         this.tokenStore = tokenStore;

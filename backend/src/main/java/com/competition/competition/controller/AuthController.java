@@ -4,6 +4,7 @@ import com.competition.competition.common.Result;
 import com.competition.competition.common.ResultCode;
 import com.competition.competition.dto.LoginRequest;
 import com.competition.competition.dto.LoginResponse;
+import com.competition.competition.dto.RegisterRequest;
 import com.competition.competition.dto.UserProfileDto;
 import com.competition.competition.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,6 +25,12 @@ public class AuthController {
     public Result<LoginResponse> login(@Valid @RequestBody LoginRequest req) {
         Optional<LoginResponse> res = authService.login(req.getUsername(), req.getPassword());
         return res.map(Result::ok).orElseGet(() -> Result.fail(ResultCode.UNAUTHORIZED, "用户名或密码错误"));
+    }
+
+    @PostMapping("/register")
+    public Result<LoginResponse> register(@Valid @RequestBody RegisterRequest req) {
+        Optional<LoginResponse> res = authService.register(req);
+        return res.map(Result::ok).orElseGet(() -> Result.fail(ResultCode.CONFLICT, "用户名已存在"));
     }
 
     @PostMapping("/logout")

@@ -1,6 +1,7 @@
 package com.competition.competition.service;
 
 import com.competition.competition.config.AuthTokenStore;
+import com.competition.competition.dto.RegisterRequest;
 import com.competition.competition.dto.LoginResponse;
 import com.competition.competition.dto.UserProfileDto;
 import com.competition.competition.entity.User;
@@ -29,6 +30,27 @@ public class AuthService {
                             .user(toProfile(u))
                             .build();
                 });
+    }
+
+    public Optional<LoginResponse> register(RegisterRequest req) {
+        String username = req.getUsername();
+        String password = req.getPassword();
+
+        if (userMapper.findByUsername(username) != null) {
+            return Optional.empty();
+        }
+
+        User user = new User();
+        user.setUsername(username);
+        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setRole("user");
+        userMapper.insert(user);
+
+        String token = tokenStore.put(user.getId());
+        return Optional.of(LoginResponse.builder()
+                .token(token)
+                .user(toProfile(user))
+                .build());
     }
 
     public void logout(String token) {
