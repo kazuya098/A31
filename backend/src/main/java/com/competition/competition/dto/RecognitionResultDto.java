@@ -29,6 +29,8 @@ public class RecognitionResultDto {
 
     /** 上传图片路径，用于报告展示 */
     private String imagePath;
+    /** 注意力热力图路径（URL），前端用于渲染叠加/可视化 */
+    private String heatmapPath;
     /** 识别时间，用于报告 */
     private java.time.LocalDateTime recognitionTime;
     /** 关联个体 id（同一生物展示用），对应 individual.id */

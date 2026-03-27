@@ -20,6 +20,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -86,6 +87,9 @@ public class RecognitionService {
         if (algo != null) {
             // 识别成功
 
+            // 4.0 处理注意力热力图（可选）
+            String heatmapSavedPath = saveHeatmapBase64(algo.getHeatmapBase64(), record.getId());
+
             // 4.1 查找或创建个体（归并同一生物）
             Individual individual = findOrCreateIndividual(
                     algo.getIdentityId(),    // 算法返回的身份 ID，如 "person_001"
@@ -99,7 +103,8 @@ public class RecognitionService {
                     "done",                  // 状态：已完成
                     algo.getIdentityId(),    // "person_001"
                     null,                    // confidence（置信度，暂不保存）
-                    individual.getId()       // 个体 ID
+                    individual.getId(),      // 个体 ID
+                    heatmapSavedPath        // 注意力热力图路径（本地路径，可空）
             );
             // SQL: UPDATE recognition_record SET status='done', identity_id='person_001', individual_id=? WHERE id=1
 
@@ -124,6 +129,7 @@ public class RecognitionService {
                     .identityId(algo.getIdentityId())             // "person_001"
                     .message("识别成功")
                     .imagePath(toAccessibleUrl(savedPath))        // "/static/uploads/a1b2c3d4...jpg"
+                    .heatmapPath(toAccessibleUrl(heatmapSavedPath)) // 注意力热力图 URL（可空）
                     .recognitionTime(LocalDateTime.now())
                     .individualId(individual.getId())
                     .build();
@@ -134,6 +140,7 @@ public class RecognitionService {
             recordMapper.updateResultAndIndividual(
                     record.getId(),
                     "failed",
+                    null,
                     null,
                     null,
                     null
@@ -171,6 +178,58 @@ public class RecognitionService {
         }
     }
 
+    /**
+     * 保存算法生成的注意力热力图（可选）。
+     * Python 建议返回：JSON 字段 `heatmap_base64`，内容为图片 base64（可以是 data URI，也可以是纯 base64）。
+     */
+    private String saveHeatmapBase64(String heatmapBase64, Long recordId) {
+        if (heatmapBase64 == null || heatmapBase64.isBlank()) {
+            return null;
+        }
+        try {
+            String raw = heatmapBase64.trim();
+            String mime = null;
+
+            // 兼容 data URI：data:image/png;base64,xxxx
+            if (raw.startsWith("data:")) {
+                int semi = raw.indexOf(';');
+                int comma = raw.indexOf(',');
+                if (semi > 5) mime = raw.substring(5, semi);
+                if (comma >= 0) raw = raw.substring(comma + 1);
+            }
+
+            // 兼容可能存在的 "base64," 片段
+            if (raw.contains("base64,")) {
+                int idx = raw.indexOf("base64,") + "base64,".length();
+                raw = raw.substring(idx);
+            }
+
+            String ext = ".png";
+            if (mime != null) {
+                String m = mime.toLowerCase();
+                if (m.contains("jpeg") || m.contains("jpg")) ext = ".jpg";
+                else if (m.contains("webp")) ext = ".webp";
+                else if (m.contains("bmp")) ext = ".bmp";
+            }
+
+            byte[] bytes = Base64.getDecoder().decode(raw);
+
+            // 注意：toAccessibleUrl() 只取文件名，因此 heatmap 也需要保存到 uploads 根目录
+            Path dir = Paths.get(uploadPath);
+            if (!Files.exists(dir)) {
+                Files.createDirectories(dir);
+            }
+            String filename = "heatmap_" + recordId + "_" + UUID.randomUUID() + ext;
+            Path target = dir.resolve(filename);
+            Files.write(target, bytes);
+            return target.toString();
+        } catch (Exception e) {
+            // 注意力热力图不保证一定返回，失败时不影响识别主流程
+            log.warn("save heatmap failed: {}", e.getMessage());
+            return null;
+        }
+    }
+
     private Individual findOrCreateIndividual(String algorithmIdentityId, String speciesType, String firstImagePath) {
         Individual ind = individualMapper.findByAlgorithmIdentityIdAndSpeciesType(algorithmIdentityId, speciesType);
         if (ind != null) return ind;
@@ -198,6 +257,7 @@ public class RecognitionService {
                     .identityId(rec.getIdentityId())
                     .message(rec.getStatus())
                     .imagePath(toAccessibleUrl(rec.getImagePath()))
+                    .heatmapPath(toAccessibleUrl(rec.getHeatmapPath()))
                     .recognitionTime(rec.getCreatedAt())
                     .individualId(rec.getIndividualId())
                     .build();
@@ -227,6 +287,7 @@ public class RecognitionService {
                     .recordId(r.getId())
                     .recognitionResult(r.getIndividualId() != null ? String.valueOf(r.getIndividualId()) : r.getIdentityId())
                     .imagePath(toAccessibleUrl(r.getImagePath()))
+                    .heatmapPath(toAccessibleUrl(r.getHeatmapPath()))
                     .recognitionTime(r.getCreatedAt())
                     .operatorName(operatorName)
                     .type(r.getType())

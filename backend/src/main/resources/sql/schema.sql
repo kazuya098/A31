@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS recognition_record (
     status          VARCHAR(32)  NOT NULL DEFAULT 'pending' COMMENT 'pending/processing/done/failed',
     identity_id     VARCHAR(128) NULL COMMENT '算法返回的个体标识',
     confidence      DOUBLE NULL COMMENT '置信度',
+    heatmap_path    VARCHAR(512) NULL COMMENT '注意力热力图路径（本地文件路径/URL）',
     type            VARCHAR(32)  NOT NULL DEFAULT 'human' COMMENT 'human=人类识别, non_human=非人类识别',
     operation_status VARCHAR(32)  NOT NULL DEFAULT '正常' COMMENT '操作状态：正常/异常',
     individual_id   BIGINT NULL COMMENT '关联个体表id（同一生物多张图共用一个individual_id）',
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS recognition_record (
 -- ALTER TABLE recognition_record ADD COLUMN type VARCHAR(32) NOT NULL DEFAULT 'human' COMMENT 'human/non_human';
 -- ALTER TABLE recognition_record ADD COLUMN operation_status VARCHAR(32) NOT NULL DEFAULT '正常';
 -- ALTER TABLE recognition_record ADD COLUMN individual_id BIGINT NULL;
+-- ALTER TABLE recognition_record ADD COLUMN heatmap_path VARCHAR(512) NULL COMMENT '注意力热力图路径（本地文件路径/URL）';
 -- ALTER TABLE recognition_record ADD INDEX idx_type (type), ADD INDEX idx_individual_id (individual_id);
 
 -- 3. 个体表：同一物种/同一生物一个 id（网页展示的编号）

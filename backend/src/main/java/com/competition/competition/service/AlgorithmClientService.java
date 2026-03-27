@@ -18,7 +18,8 @@ import java.util.Map;
 
 /**
  * 调用 Python 算法推理服务的 HTTP 客户端。
- * 约定：POST multipart/form-data 字段 "file" 为图片；响应 JSON 至少包含 identity_id（rank-1 个体 ID）。
+ * 约定：POST multipart/form-data 字段 "file" 为图片；
+ * 响应 JSON 至少包含 identity_id（rank-1 个体 ID），可选包含注意力热力图 base64 字段（如 heatmap_base64）。
  * 配置：algorithm.service.url（如 http://localhost:5000/recognize）、algorithm.service.timeout-seconds。
  */
 @Slf4j
@@ -97,9 +98,20 @@ public class AlgorithmClientService {
                     }
 
                     if (id != null) {
+                        // 约定：Python 额外返回注意力热力图 base64（可选）
+                        String heatmapBase64 = null;
+                        Object hm = data.get("heatmap_base64");
+                        if (hm == null) hm = data.get("heatmapBase64");
+                        if (hm == null) hm = data.get("heatmap_image_base64");
+                        if (hm == null) hm = data.get("attention_heatmap_base64");
+                        if (hm != null) {
+                            heatmapBase64 = String.valueOf(hm);
+                        }
+
                         // 成功获取身份 ID
                         return AlgorithmResult.builder()
                                 .identityId(id)  // "person_001"
+                                .heatmapBase64(heatmapBase64)
                                 .build();
                     }
                 }
@@ -146,5 +158,8 @@ public class AlgorithmClientService {
     public static class AlgorithmResult {
         /** rank-1 识别出的身份 ID */
         private String identityId;
+
+        /** 注意力热力图 base64（PNG/JPG 等，后端将解码保存成图片后返回 URL，可选） */
+        private String heatmapBase64;
     }
 }

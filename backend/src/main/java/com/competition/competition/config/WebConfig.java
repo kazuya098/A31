@@ -39,6 +39,7 @@ public class WebConfig implements WebMvcConfigurer {
         // 或者返回一个简单的欢迎信息
         // registry.addViewController("/").setViewName("forward:/api/health");
     }
+
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")

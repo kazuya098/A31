@@ -21,6 +21,8 @@ public class RecognitionRecord {
     /** 识别结果：个体 ID（算法返回） */
     private String identityId;
     private Double confidence;
+    /** 注意力热力图本地保存路径（用于映射到可访问 URL） */
+    private String heatmapPath;
     /** human=人类识别, non_human=非人类识别 */
     private String type;
     /** 操作状态：正常/异常 */

@@ -20,6 +20,8 @@ public class RecordReportDto {
     /** 识别结果展示字符串，由 individualId 或 identityId 转成可读内容 */
     private String recognitionResult;
     private String imagePath;
+    /** 注意力热力图路径（URL），前端用于渲染叠加/可视化 */
+    private String heatmapPath;
     /** 识别时间，对应 recognition_record.created_at */
     private LocalDateTime recognitionTime;
     /** 操作者名称，一般由 user.username 映射 */

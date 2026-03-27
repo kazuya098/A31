@@ -21,7 +21,8 @@ public interface RecognitionRecordMapper {
                                   @Param("status") String status,
                                   @Param("identityId") String identityId,
                                   @Param("confidence") Double confidence,
-                                  @Param("individualId") Long individualId);
+                                  @Param("individualId") Long individualId,
+                                  @Param("heatmapPath") String heatmapPath);
 
     List<RecognitionRecord> list(@Param("type") String type,
                                 @Param("startTime") LocalDateTime startTime,
