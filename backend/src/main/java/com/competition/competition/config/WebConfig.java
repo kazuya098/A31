@@ -14,6 +14,8 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import reactor.netty.http.client.HttpClient;
 
 import java.time.Duration;
+import java.nio.file.Paths;
+
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -21,6 +23,7 @@ import org.springframework.web.servlet.resource.ResourceResolver;
 import org.springframework.web.servlet.resource.ResourceResolverChain;
 
 import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
  * Web 相关配置。
@@ -30,6 +33,8 @@ import java.util.List;
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
+    @Value("${upload.path:./uploads}")
+    private String uploadPath;
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
@@ -77,7 +82,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // 映射/uploads/目录到/static/uploads/路径，支持远程访问图片
         registry.addResourceHandler("/static/uploads/**")
-                .addResourceLocations("file:./uploads/");
+                .addResourceLocations(Paths.get(uploadPath).toAbsolutePath().normalize().toUri().toString() + "/");
 
         // 处理 favicon.ico 请求
         registry.addResourceHandler("/**.ico", "/favicon.ico")

@@ -41,6 +41,10 @@ public class RecognitionService {
     @Value("${upload.path:./uploads}")
     private String uploadPath;
 
+    private Path uploadDirAbsolute() {
+        return Paths.get(uploadPath).toAbsolutePath().normalize();
+    }
+
     /** 将本地文件路径转换为可访问的 URL */
     private String toAccessibleUrl(String localPath) {
         if (localPath == null || localPath.isEmpty()) {
@@ -158,8 +162,9 @@ public class RecognitionService {
 
 
     private String saveFile(MultipartFile file) {
+        Path target = null;
         try {
-            Path dir = Paths.get(uploadPath);
+            Path dir = uploadDirAbsolute();
             if (!Files.exists(dir)) {
                 Files.createDirectories(dir);
             }
@@ -169,11 +174,12 @@ public class RecognitionService {
                 ext = originalName.substring(originalName.lastIndexOf('.'));
             }
             String filename = UUID.randomUUID() + ext;
-            Path target = dir.resolve(filename);
+            target = dir.resolve(filename);
             file.transferTo(target.toFile());
             return target.toString();
         } catch (Exception e) {
-            log.warn("save file failed: {}", e.getMessage());
+            log.warn("save file failed, uploadPath={}, resolvedDir={}, target={}",
+                    uploadPath, uploadDirAbsolute(), target, e);
             throw new RuntimeException("保存文件失败", e);
         }
     }
@@ -215,7 +221,7 @@ public class RecognitionService {
             byte[] bytes = Base64.getDecoder().decode(raw);
 
             // 注意：toAccessibleUrl() 只取文件名，因此 heatmap 也需要保存到 uploads 根目录
-            Path dir = Paths.get(uploadPath);
+            Path dir = uploadDirAbsolute();
             if (!Files.exists(dir)) {
                 Files.createDirectories(dir);
             }

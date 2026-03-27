@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* shadcn-ui variables */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
+
+    /* Element Plus 主题变量 */
+    --el-color-primary: #F28C38;
+    --el-color-primary-light-3: #E57A23; /* 悬停色 */
+    --el-color-primary-light-5: #F7AE6A;
+    --el-color-primary-light-7: #F9C590;
+    --el-color-primary-light-8: #FBD7A9;
+    --el-color-primary-light-9: #FDE8C2;
+    --el-color-primary-dark-2: #E57A23;
+
+    /* 全局卡片样式变量 */
+    --card-background: #fef6f5;
+    --card-border-radius: 16px;
+          --card-box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+
+    /* 全局文字颜色变量 */
+    --text-color-title: #2F2F2F;
+    --text-color-body: #666666;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background-color: #F7F4EF; /* 全局页面背景色 */
+  }
+}
+
+/* Element Plus 样式覆盖 */
+.el-button--primary {
+  --el-button-bg-color: var(--el-color-primary);
+  --el-button-hover-bg-color: var(--el-color-primary-light-3);
+  --el-button-active-bg-color: var(--el-color-primary-dark-2);
+  --el-button-border-color: var(--el-color-primary);
+  --el-button-hover-border-color: var(--el-color-primary-light-3);
+}
+
+.el-card {
+  background-color: var(--card-background);
+  border-radius: var(--card-border-radius);
+  box-shadow: var(--card-box-shadow);
+  border: none; /* 移除默认边框 */
+}
+
+/* 全局文字颜色 */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-color-title);
+}
+
+p, span, div, a, li, dd, dt {
+  color: var(--text-color-body);
+}
