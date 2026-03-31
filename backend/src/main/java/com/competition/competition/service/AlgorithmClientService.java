@@ -3,146 +3,234 @@ package com.competition.competition.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.Duration;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Map;
 
-/**
- * 调用 Python 算法推理服务的 HTTP 客户端。
- * 约定：POST multipart/form-data 字段 "file" 为图片；
- * 响应 JSON 至少包含 identity_id（rank-1 个体 ID），可选包含注意力热力图 base64 字段（如 heatmap_base64）。
- * 配置：algorithm.service.url（如 http://localhost:5000/recognize）、algorithm.service.timeout-seconds。
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AlgorithmClientService {
 
-    private final WebClient webClient;//spring容器注入的bean
-
-    @Value("${algorithm.service.url:http://localhost:5000/recognize}")
+    @Value("${algorithm.service.url:https://retrolental-georgette-municipally.ngrok-free.dev/predict}")
     private String algorithmUrl;
 
     @Value("${algorithm.service.timeout-seconds:30}")
     private int timeoutSeconds;
 
-    private static final int MAX_RETRIES = 3;
+    public static final int MAX_RETRIES = 3;
 
-    /**
-     * 调用算法服务进行跨时面部识别，带重试（网络波动时自动重试，失败返回 null）。
-     *
-     * @param imageFile 上传的面部图片
-     * @return 识别结果（rank-1 身份 ID）；失败时返回 null
-     */
-    // AlgorithmClientService.java 第 47-98 行
     public AlgorithmResult recognize(MultipartFile imageFile) {
-
-        // ====== 第 1 步：验证文件 ======
         if (imageFile == null || imageFile.isEmpty()) {
             return null;
         }
 
-        // ====== 第 2 步：准备重试机制 ======
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-            // MAX_RETRIES = 3，最多重试 3 次
-
+            HttpURLConnection conn = null;
             try {
-                // ====== 第 3 步：构建 multipart/form-data 请求体 ======
-                MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-                body.add("file", new ByteArrayResource(imageFile.getBytes()) {
-                    @Override
-                    public String getFilename() {
-                        return imageFile.getOriginalFilename();
-                        // 返回："face.jpg"
-                    }
-                });
+                byte[] fileBytes = imageFile.getBytes();
+                
+                URL url = new URL(algorithmUrl);
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setDoOutput(true);
+                
+                // 使用标准的 boundary 格式
+                String boundary = "----WebKitFormBoundary" + System.currentTimeMillis();
+                conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+                // 添加 ngrok 所需的 header（如果是通过 ngrok 暴露的服务）
+                conn.setRequestProperty("ngrok-skip-browser-warning", "true");
+                conn.setConnectTimeout(timeoutSeconds * 1000);
+                conn.setReadTimeout(timeoutSeconds * 1000);
 
-                // ====== 第 4 步：用 WebClient 发送 HTTP 请求到 Python 服务 ======
-                Map<String, Object> data = webClient.post()
-                        .uri(algorithmUrl)
-                        // algorithmUrl = "http://localhost:5000/recognize"
+                try (OutputStream out = conn.getOutputStream()) {
+                    String lineFeed = "\r\n";
+                    String filename = imageFile.getOriginalFilename();
+                    String contentType = imageFile.getContentType() != null ? imageFile.getContentType() : "image/jpeg";
 
-                        .contentType(MediaType.MULTIPART_FORM_DATA)
-                        // 设置 Content-Type: multipart/form-data
+                    // 正确的 multipart 格式：--boundary\r\n
+                    out.write(("--" + boundary).getBytes());
+                    out.write(lineFeed.getBytes());
+                    out.write(("Content-Disposition: form-data; name=\"file\"; filename=\"" + filename + "\"").getBytes());
+                    out.write(lineFeed.getBytes());
+                    out.write(("Content-Type: " + contentType).getBytes());
+                    out.write(lineFeed.getBytes());
+                    out.write(lineFeed.getBytes());
 
-                        .body(BodyInserters.fromMultipartData(body))
-                        // 放入请求体（包含图片数据）
+                    out.write(fileBytes);
 
-                        .retrieve()
-                        // 发起请求！
+                    // 结束标记：\r\n--boundary--\r\n
+                    out.write(lineFeed.getBytes());
+                    out.write(("--" + boundary + "--").getBytes());
+                    out.write(lineFeed.getBytes());
 
-                        .bodyToMono(Map.class)
-                        // 期望响应是 JSON 格式，自动解析为 Map
-
-                        .block(Duration.ofSeconds(timeoutSeconds));
-                // 阻塞等待最多 30 秒
-
-                // ====== 第 5 步：解析 Python 服务的响应 ======
-                if (data != null) {
-                    // 假设 Python 返回：{"identity_id": "person_001"}
-                    String id = (String) data.get("identity_id");
-                    // 先尝试下划线命名
-
-                    if (id == null) {
-                        id = (String) data.get("identityId");
-                        // 再尝试驼峰命名（兼容不同命名规范）
-                    }
-
-                    if (id != null) {
-                        // 约定：Python 额外返回注意力热力图 base64（可选）
-                        String heatmapBase64 = null;
-                        Object hm = data.get("heatmap_base64");
-                        if (hm == null) hm = data.get("heatmapBase64");
-                        if (hm == null) hm = data.get("heatmap_image_base64");
-                        if (hm == null) hm = data.get("attention_heatmap_base64");
-                        if (hm != null) {
-                            heatmapBase64 = String.valueOf(hm);
-                        }
-
-                        // 成功获取身份 ID
-                        return AlgorithmResult.builder()
-                                .identityId(id)  // "person_001"
-                                .heatmapBase64(heatmapBase64)
-                                .build();
-                    }
+                    out.flush();
                 }
 
-                return null;  // 响应格式不对
+                int responseCode = conn.getResponseCode();
+                log.info("Algorithm service response code: {}", responseCode);
 
-            } catch (WebClientResponseException e) {
-                // 捕获 HTTP 错误（如 4xx、5xx）
-                log.warn("algorithm call failed (attempt {}/{}), status={}, body={}",
-                        attempt, MAX_RETRIES, e.getStatusCode(), e.getResponseBodyAsString());
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+                        StringBuilder response = new StringBuilder();
+                        String line;
+                        while ((line = br.readLine()) != null) {
+                            response.append(line);
+                        }
 
-                if (attempt == MAX_RETRIES) {
-                    return null;  // 最后一次重试失败，放弃
+                        String responseStr = response.toString();
+                        log.info("Algorithm service response: {}", responseStr);
+
+                        String id = null;
+                        Double confidence = null;
+                        String heatmapBase64 = null;
+
+                        // 1. 解析 identity_id
+                        int identityIdIndex = responseStr.indexOf("\"identity_id\"");
+                        if (identityIdIndex == -1) {
+                            identityIdIndex = responseStr.indexOf("\"identityId\"");
+                        }
+                        log.info("Found identity_id key at index: {}", identityIdIndex);
+
+                        if (identityIdIndex != -1) {
+                            int colonIndex = responseStr.indexOf(':', identityIdIndex);
+                            if (colonIndex != -1) {
+                                // 跳过冒号和空格
+                                int valueStart = colonIndex + 1;
+                                while (valueStart < responseStr.length() && 
+                                       Character.isWhitespace(responseStr.charAt(valueStart))) {
+                                    valueStart++;
+                                }
+                                
+                                if (valueStart < responseStr.length()) {
+                                    char firstChar = responseStr.charAt(valueStart);
+                                    log.info("First char of identity_id value: '{}' (code={})", firstChar, (int)firstChar);
+                                    
+                                    if (firstChar == '"') {
+                                        // 字符串类型："identity_id": "person_001"
+                                        int startQuote = valueStart;
+                                        int endQuote = responseStr.indexOf('"', startQuote + 1);
+                                        if (endQuote != -1) {
+                                            id = responseStr.substring(startQuote + 1, endQuote);
+                                            log.info("Parsed identity_id (string): {}", id);
+                                        }
+                                    } else if (Character.isDigit(firstChar) || firstChar == '-') {
+                                        // 数字类型："identity_id": 1
+                                        int valueEnd = valueStart;
+                                        while (valueEnd < responseStr.length() && 
+                                               (Character.isDigit(responseStr.charAt(valueEnd)) || 
+                                                responseStr.charAt(valueEnd) == '-' ||
+                                                responseStr.charAt(valueEnd) == '.')) {
+                                            valueEnd++;
+                                        }
+                                        id = responseStr.substring(valueStart, valueEnd).trim();
+                                        log.info("Parsed identity_id (number): {}", id);
+                                    }
+                                }
+                            }
+                        }
+
+                        // 2. 解析 confidence
+                        int confidenceIndex = responseStr.indexOf("\"confidence\"");
+                        log.info("Found confidence key at index: {}", confidenceIndex);
+                        if (confidenceIndex != -1) {
+                            int colonIndex = responseStr.indexOf(':', confidenceIndex);
+                            if (colonIndex != -1) {
+                                int valueStart = colonIndex + 1;
+                                while (valueStart < responseStr.length() && 
+                                       Character.isWhitespace(responseStr.charAt(valueStart))) {
+                                    valueStart++;
+                                }
+                                
+                                if (valueStart < responseStr.length()) {
+                                    int valueEnd = valueStart;
+                                    while (valueEnd < responseStr.length() && 
+                                           (Character.isDigit(responseStr.charAt(valueEnd)) || 
+                                            responseStr.charAt(valueEnd) == '-' ||
+                                            responseStr.charAt(valueEnd) == '.')) {
+                                        valueEnd++;
+                                    }
+                                    if (valueEnd > valueStart) {
+                                        try {
+                                            confidence = Double.parseDouble(responseStr.substring(valueStart, valueEnd).trim());
+                                            log.info("Parsed confidence: {}", confidence);
+                                        } catch (NumberFormatException e) {
+                                            log.warn("Failed to parse confidence: {}", e.getMessage());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 3. 解析 heatmap_base64
+                        String[] heatmapKeys = {"heatmap_base64", "heatmapBase64", "heatmap_image_base64", "attention_heatmap_base64"};
+                        for (String key : heatmapKeys) {
+                            int heatmapIndex = responseStr.indexOf("\"" + key + "\"");
+                            if (heatmapIndex != -1) {
+                                log.info("Found heatmap key '{}' at index: {}", key, heatmapIndex);
+                                int colonIndex = responseStr.indexOf(':', heatmapIndex);
+                                if (colonIndex != -1) {
+                                    int startQuote = responseStr.indexOf('"', colonIndex + 1);
+                                    if (startQuote != -1) {
+                                        int endQuote = responseStr.indexOf('"', startQuote + 1);
+                                        if (endQuote != -1) {
+                                            heatmapBase64 = responseStr.substring(startQuote + 1, endQuote);
+                                            log.info("Parsed heatmap_base64 (length={}): {}...", heatmapBase64.length(), heatmapBase64.substring(0, Math.min(20, heatmapBase64.length())));
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        log.info("=== Final Parsed Result ===");
+                        log.info("identity_id: {}", id);
+                        log.info("confidence: {}", confidence);
+                        log.info("heatmap_base64 present: {}", heatmapBase64 != null);
+
+                        if (id != null) {
+                            conn.disconnect();
+                            return AlgorithmResult.builder()
+                                    .identityId(id)
+                                    .confidence(confidence)
+                                    .heatmapBase64(heatmapBase64)
+                                    .build();
+                        }
+                    }
+                } else {
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream()))) {
+                        StringBuilder errorResponse = new StringBuilder();
+                        String line;
+                        while ((line = br.readLine()) != null) {
+                            errorResponse.append(line);
+                        }
+                        log.warn("Algorithm service error response: {}", errorResponse.toString());
+                    }
                 }
 
             } catch (Exception e) {
-                // 捕获其他异常（网络超时、DNS 解析失败等）
-                log.warn("algorithm call failed (attempt {}/{}): {}",
-                        attempt, MAX_RETRIES, e.getMessage());
+                log.warn("algorithm call failed (attempt {}/{}): {}", attempt, MAX_RETRIES, e.getMessage());
+                e.printStackTrace();
 
                 if (attempt == MAX_RETRIES) {
-                    return null;  // 最后一次重试失败，放弃
+                    return null;
+                }
+            } finally {
+                if (conn != null) {
+                    conn.disconnect();
                 }
             }
 
-            // ====== 第 6 步：重试前的等待（指数退避）======
             if (attempt < MAX_RETRIES) {
                 try {
                     Thread.sleep(1000L * attempt);
-                    // 第 1 次失败后等 1 秒
-                    // 第 2 次失败后等 2 秒
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     return null;
@@ -150,16 +238,14 @@ public class AlgorithmClientService {
             }
         }
 
-        return null;  // 所有重试都失败了
+        return null;
     }
 
     @lombok.Data
     @lombok.Builder
     public static class AlgorithmResult {
-        /** rank-1 识别出的身份 ID */
         private String identityId;
-
-        /** 注意力热力图 base64（PNG/JPG 等，后端将解码保存成图片后返回 URL，可选） */
+        private Double confidence;
         private String heatmapBase64;
     }
 }

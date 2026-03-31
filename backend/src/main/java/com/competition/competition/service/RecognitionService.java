@@ -13,8 +13,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -41,6 +48,12 @@ public class RecognitionService {
     @Value("${upload.path:./uploads}")
     private String uploadPath;
 
+    @Value("${algorithm.service.url:https://retrolental-georgette-municipally.ngrok-free.dev/predict}")
+    private String algorithmUrl;
+
+    @Value("${algorithm.service.timeout-seconds:30}")
+    private int timeoutSeconds;
+
     private Path uploadDirAbsolute() {
         return Paths.get(uploadPath).toAbsolutePath().normalize();
     }
@@ -58,55 +71,64 @@ public class RecognitionService {
 
 
     /** 上传图片 → 落库 → 调算法 → 归并个体/个体图片 → 返回结果（含报告用字段） */
-    // RecognitionService.java 第 56-100 行
-    public RecognitionResultDto submit(MultipartFile file, String type, Long operatorUserId) {
+    public RecognitionResultDto submit(MultipartFile file,
+                                       String type,
+                                       Long operatorId) throws IOException {
+        
+        // ====== 新增：先验证并获取文件大小 ======
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("上传文件不能为空");
+        }
 
-        // ====== 阶段 1：保存图片到本地 ======
-        String savedPath = saveFile(file);
-        // 调用 saveFile() 方法（第 102-121 行）
-        // 1. 创建上传目录：./uploads/
-        // 2. 生成唯一文件名：UUID + 原扩展名
-        // 3. 保存文件：file.transferTo(target.toFile())
-        // 4. 返回路径
+        // ====== 关键修复：立即将文件内容读到内存，避免临时文件被清理 ======
+        byte[] fileBytes = file.getBytes();
+        String originalFilename = file.getOriginalFilename();
+        String contentType = file.getContentType();
 
-        // 确定识别类型
-        String recordType = "human".equalsIgnoreCase(type) ? "human" : "non_human";
+        // ====== 1. 保存上传的图片到本地（带唯一文件名）======
+        String randomId = UUID.randomUUID().toString().replace("-", "");
+        String ext = "";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            ext = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
+        String savedFileName = randomId + ext;
+        Path savePath = Paths.get(uploadPath).resolve(savedFileName);
+        Files.createDirectories(savePath.getParent());
+        Files.write(savePath, fileBytes);  // ✅ 直接使用已读取的字节数组
 
-        // ====== 阶段 2：创建识别记录（数据库落库）======
+        log.info("Saved upload file to: {}", savePath.toAbsolutePath());
+
+        // ====== 1.5 创建识别记录 ======
         RecognitionRecord record = new RecognitionRecord();
-        record.setUserId(operatorUserId);           // 1 (admin 的 ID)
-        record.setImagePath(savedPath);             // 图片保存路径
-        record.setStatus("processing");             // 状态：处理中
-        record.setType(recordType);                 // "human"
-        record.setOperationStatus("正常");
-        recordMapper.insert(record);                // ← 插入数据库
+        record.setUserId(operatorId); // 从登录态获取操作者 ID
+        record.setImagePath(savePath.toString());
+        record.setStatus("pending");
+        record.setType(type);
+        record.setOperationStatus("正常"); // 设置默认操作状态
+        recordMapper.insert(record);
 
+        // ====== 2. 调用算法服务进行识别（传递字节数组而不是 MultipartFile）======
+        AlgorithmClientService.AlgorithmResult algoResult = recognizeByAlgorithm(fileBytes, originalFilename, contentType);
 
-        // ====== 阶段 3：调用 Python 算法服务（关键！）======
-        AlgorithmClientService.AlgorithmResult algo = algorithmClient.recognize(file);
-        // 这里就是调用 AlgorithmClientService 的地方！
-
-
-        // ====== 阶段 4：处理算法返回结果 ======
-        if (algo != null) {
+        if (algoResult != null) {
             // 识别成功
 
             // 4.0 处理注意力热力图（可选）
-            String heatmapSavedPath = saveHeatmapBase64(algo.getHeatmapBase64(), record.getId());
+            String heatmapSavedPath = saveHeatmapBase64(algoResult.getHeatmapBase64(), record.getId());
 
             // 4.1 查找或创建个体（归并同一生物）
             Individual individual = findOrCreateIndividual(
-                    algo.getIdentityId(),    // 算法返回的身份 ID，如 "person_001"
-                    recordType,              // "human"
-                    savedPath                // 图片路径
+                    algoResult.getIdentityId(),    // 算法返回的身份 ID，如 "person_001"
+                    type,              // "human"
+                    savePath.toString()                // 图片路径
             );
 
             // 4.2 更新识别记录的状态和结果
             recordMapper.updateResultAndIndividual(
                     record.getId(),          // 1
                     "done",                  // 状态：已完成
-                    algo.getIdentityId(),    // "person_001"
-                    null,                    // confidence（置信度，暂不保存）
+                    algoResult.getIdentityId(),    // "person_001"（数字或字符串）
+                    algoResult.getConfidence(),    // ✅ 保存置信度
                     individual.getId(),      // 个体 ID
                     heatmapSavedPath        // 注意力热力图路径（本地路径，可空）
             );
@@ -115,7 +137,7 @@ public class RecognitionService {
             // 4.3 创建个体图片记录（关联到个体）
             IndividualImage img = new IndividualImage();
             img.setIndividualId(individual.getId());
-            img.setImagePath(savedPath);
+            img.setImagePath(savePath.toString());
             img.setShotTime(LocalDate.now());
             img.setRecognitionRecordId(record.getId());
             individualImageMapper.insert(img);
@@ -123,16 +145,16 @@ public class RecognitionService {
 
             // 4.4 如果个体没有封面图，设置封面图
             if (individual.getCoverImagePath() == null || individual.getCoverImagePath().isBlank()) {
-                updateIndividualCover(individual.getId(), savedPath);
+                updateIndividualCover(individual.getId(), savePath.toString());
             }
 
             // 4.5 构建并返回 DTO
             return RecognitionResultDto.builder()
                     .taskId(String.valueOf(record.getId()))      // "1"
                     .status("done")                               // "done"
-                    .identityId(algo.getIdentityId())             // "person_001"
+                    .identityId(algoResult.getIdentityId())             // "person_001"
                     .message("识别成功")
-                    .imagePath(toAccessibleUrl(savedPath))        // "/static/uploads/a1b2c3d4...jpg"
+                    .imagePath(toAccessibleUrl(savePath.toString()))        // "/static/uploads/a1b2c3d4...jpg"
                     .heatmapPath(toAccessibleUrl(heatmapSavedPath)) // 注意力热力图 URL（可空）
                     .recognitionTime(LocalDateTime.now())
                     .individualId(individual.getId())
@@ -154,7 +176,7 @@ public class RecognitionService {
                     .taskId(String.valueOf(record.getId()))
                     .status("failed")
                     .message("识别失败")
-                    .imagePath(toAccessibleUrl(savedPath))
+                    .imagePath(toAccessibleUrl(savePath.toString()))
                     .recognitionTime(LocalDateTime.now())
                     .build();
         }
@@ -334,5 +356,206 @@ public class RecognitionService {
                     .images(items)
                     .build();
         });
+    }
+
+    /**
+     * 新增方法：使用字节数组调用算法服务
+     */
+    private AlgorithmClientService.AlgorithmResult recognizeByAlgorithm(byte[] fileBytes, 
+                                                                        String originalFilename, 
+                                                                        String contentType) {
+        
+        for (int attempt = 1; attempt <= AlgorithmClientService.MAX_RETRIES; attempt++) {
+            HttpURLConnection conn = null;
+            try {
+                URL url = new URL(algorithmUrl);
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setDoOutput(true);
+                
+                // 使用标准的 boundary 格式
+                String boundary = "----WebKitFormBoundary" + System.currentTimeMillis();
+                conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+                // 添加 ngrok 所需的 header（如果是通过 ngrok 暴露的服务）
+                conn.setRequestProperty("ngrok-skip-browser-warning", "true");
+                conn.setConnectTimeout(timeoutSeconds * 1000);
+                conn.setReadTimeout(timeoutSeconds * 1000);
+
+                try (OutputStream out = conn.getOutputStream()) {
+                    String lineFeed = "\r\n";
+
+                    // 正确的 multipart 格式：--boundary\r\n
+                    out.write(("--" + boundary).getBytes());
+                    out.write(lineFeed.getBytes());
+                    out.write(("Content-Disposition: form-data; name=\"file\"; filename=\"" + originalFilename + "\"").getBytes());
+                    out.write(lineFeed.getBytes());
+                    out.write(("Content-Type: " + (contentType != null ? contentType : "image/jpeg")).getBytes());
+                    out.write(lineFeed.getBytes());
+                    out.write(lineFeed.getBytes());
+
+                    out.write(fileBytes);
+
+                    // 结束标记：\r\n--boundary--\r\n
+                    out.write(lineFeed.getBytes());
+                    out.write(("--" + boundary + "--").getBytes());
+                    out.write(lineFeed.getBytes());
+
+                    out.flush();
+                }
+
+                int responseCode = conn.getResponseCode();
+                log.info("Algorithm service response code: {}", responseCode);
+
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+                        StringBuilder response = new StringBuilder();
+                        String line;
+                        while ((line = br.readLine()) != null) {
+                            response.append(line);
+                        }
+
+                        String responseStr = response.toString();
+                        log.info("Algorithm service response: {}", responseStr);
+
+                        String id = null;
+                        Double confidence = null;
+                        String heatmapBase64 = null;
+
+                        // 1. 解析 identity_id（兼容数字和字符串）
+                        int identityIdIndex = responseStr.indexOf("\"identity_id\"");
+                        if (identityIdIndex == -1) {
+                            identityIdIndex = responseStr.indexOf("\"identityId\"");
+                        }
+
+                        if (identityIdIndex != -1) {
+                            int colonIndex = responseStr.indexOf(':', identityIdIndex);
+                            if (colonIndex != -1) {
+                                // 跳过冒号和空格
+                                int valueStart = colonIndex + 1;
+                                while (valueStart < responseStr.length() && 
+                                       Character.isWhitespace(responseStr.charAt(valueStart))) {
+                                    valueStart++;
+                                }
+                                
+                                if (valueStart < responseStr.length()) {
+                                    char firstChar = responseStr.charAt(valueStart);
+                                    
+                                    if (firstChar == '"') {
+                                        // 字符串类型："identity_id": "person_001"
+                                        int startQuote = valueStart;
+                                        int endQuote = responseStr.indexOf('"', startQuote + 1);
+                                        if (endQuote != -1) {
+                                            id = responseStr.substring(startQuote + 1, endQuote);
+                                        }
+                                    } else if (Character.isDigit(firstChar) || firstChar == '-') {
+                                        // 数字类型："identity_id": 1
+                                        int valueEnd = valueStart;
+                                        while (valueEnd < responseStr.length() && 
+                                               (Character.isDigit(responseStr.charAt(valueEnd)) || 
+                                                responseStr.charAt(valueEnd) == '-' ||
+                                                responseStr.charAt(valueEnd) == '.')) {
+                                            valueEnd++;
+                                        }
+                                        id = responseStr.substring(valueStart, valueEnd).trim();
+                                    }
+                                }
+                            }
+                        }
+
+                        // 2. 解析 confidence
+                        int confidenceIndex = responseStr.indexOf("\"confidence\"");
+                        if (confidenceIndex != -1) {
+                            int colonIndex = responseStr.indexOf(':', confidenceIndex);
+                            if (colonIndex != -1) {
+                                int valueStart = colonIndex + 1;
+                                while (valueStart < responseStr.length() && 
+                                       Character.isWhitespace(responseStr.charAt(valueStart))) {
+                                    valueStart++;
+                                }
+                                
+                                if (valueStart < responseStr.length()) {
+                                    int valueEnd = valueStart;
+                                    while (valueEnd < responseStr.length() && 
+                                           (Character.isDigit(responseStr.charAt(valueEnd)) || 
+                                            responseStr.charAt(valueEnd) == '-' ||
+                                            responseStr.charAt(valueEnd) == '.')) {
+                                        valueEnd++;
+                                    }
+                                    if (valueEnd > valueStart) {
+                                        try {
+                                            confidence = Double.parseDouble(responseStr.substring(valueStart, valueEnd).trim());
+                                        } catch (NumberFormatException e) {
+                                            log.warn("Failed to parse confidence: {}", e.getMessage());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 3. 解析 heatmap_base64
+                        String[] heatmapKeys = {"heatmap_base64", "heatmapBase64", "heatmap_image_base64", "attention_heatmap_base64"};
+                        for (String key : heatmapKeys) {
+                            int heatmapIndex = responseStr.indexOf("\"" + key + "\"");
+                            if (heatmapIndex != -1) {
+                                int colonIndex = responseStr.indexOf(':', heatmapIndex);
+                                if (colonIndex != -1) {
+                                    int startQuote = responseStr.indexOf('"', colonIndex + 1);
+                                    if (startQuote != -1) {
+                                        int endQuote = responseStr.indexOf('"', startQuote + 1);
+                                        if (endQuote != -1) {
+                                            heatmapBase64 = responseStr.substring(startQuote + 1, endQuote);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        log.info("Parsed identity_id: {}, confidence: {}, heatmap_base64 present: {}", id, confidence, heatmapBase64 != null);
+
+                        if (id != null) {
+                            conn.disconnect();
+                            return AlgorithmClientService.AlgorithmResult.builder()
+                                    .identityId(id)
+                                    .confidence(confidence)
+                                    .heatmapBase64(heatmapBase64)
+                                    .build();
+                        }
+                    }
+                } else {
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream()))) {
+                        StringBuilder errorResponse = new StringBuilder();
+                        String line;
+                        while ((line = br.readLine()) != null) {
+                            errorResponse.append(line);
+                        }
+                        log.warn("Algorithm service error response: {}", errorResponse.toString());
+                    }
+                }
+
+            } catch (Exception e) {
+                log.warn("algorithm call failed (attempt {}/{}): {}", attempt, AlgorithmClientService.MAX_RETRIES, e.getMessage());
+                e.printStackTrace();
+
+                if (attempt == AlgorithmClientService.MAX_RETRIES) {
+                    return null;
+                }
+            } finally {
+                if (conn != null) {
+                    conn.disconnect();
+                }
+            }
+
+            if (attempt < AlgorithmClientService.MAX_RETRIES) {
+                try {
+                    Thread.sleep(1000L * attempt);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return null;
+                }
+            }
+        }
+
+        return null;
     }
 }

@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -30,12 +31,15 @@ public class RecognitionController {
     public Result<RecognitionResultDto> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "type", defaultValue = "human") String type,
-            HttpServletRequest request) {
+            HttpServletRequest request) throws IOException {
         if (file.isEmpty()) {
             return Result.fail(ResultCode.BAD_REQUEST, "请选择图片文件");
         }
         Long operatorId = (Long) request.getAttribute("currentUserId");
         RecognitionResultDto dto = recognitionService.submit(file, type, operatorId);
+        if ("failed".equals(dto.getStatus())) {
+            return Result.fail(ResultCode.SERVER_ERROR, dto.getMessage());
+        }
         return Result.ok(dto);
     }
 
