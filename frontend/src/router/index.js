@@ -48,19 +48,19 @@ const routes = [
       {
         path: '/individuals',
         name: 'IndividualList',
-        component: () => import('../views/individuals/IndividualList.vue'),
+        component: () => import('../views/individuals/IndividualProfilePage.vue'),
         meta: {
           title: '个体管理',
         },
       },
-      {
-        path: '/individuals/profile',
-        name: 'IndividualProfile',
-        component: () => import('../views/individuals/IndividualProfilePage.vue'),
-        meta: {
-          title: '个体档案',
-        },
-      },
+      // {
+      //   path: '/individuals/profile',
+      //   name: 'IndividualProfile',
+      //   component: () => import('../views/individuals/IndividualProfilePage.vue'),
+      //   meta: {
+      //     title: '个体档案',
+      //   },
+      // },
       {
         path: '/profile',
         name: 'Profile',

@@ -6,7 +6,7 @@
     <div class="absolute top-[20%] right-[10%] w-[20%] h-[20%] bg-purple-200/10 blur-[100px] rounded-full animate-blob animation-delay-4000 pointer-events-none"></div>
 
     <!-- Header -->
-    <header class="flex justify-between items-center mb-16 py-8 px-12 shrink-0 z-10 animate-fade-in-down">
+    <header class="flex justify-between items-center mb-8 py-5 px-12 shrink-0 z-10 animate-fade-in-down">
       <div>
         <h1 class="text-4xl font-light tracking-tight text-gray-900 mb-2">
           上传识别 <span class="font-semibold text-orange-600">分析中心</span>
@@ -14,10 +14,6 @@
         <p class="text-gray-500 text-lg">利用跨时域 AI 算法进行特征索引与生物个体建模</p>
       </div>
       <div class="flex items-center space-x-6">
-        <div class="flex flex-col items-end mr-4">
-           <span class="text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-1">Recognition Engine</span>
-           <span class="text-xs font-mono text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-100 italic">Antigravity-V3.8</span>
-        </div>
         <el-radio-group v-model="recognitionType" class="custom-radio-group">
           <el-radio-button label="human">人类识别</el-radio-button>
           <el-radio-button label="non_human">非人识别</el-radio-button>
@@ -26,10 +22,10 @@
     </header>
 
     <!-- Main Content Area -->
-    <div class="flex-1 flex px-12 pb-12 gap-10 overflow-x-hidden overflow-y-auto z-10">
+    <div class="flex-1 flex px-12 pb-8 gap-8 overflow-x-hidden overflow-y-auto z-10">
       
       <!-- Left: Primary Interaction Area -->
-      <div class="flex-1 flex flex-col overflow-x-hidden overflow-y-auto">
+      <div class="flex-1 flex flex-col overflow-x-hidden overflow-y-auto min-h-0">
         
         <!-- Upload State -->
         <div 
@@ -122,11 +118,11 @@
         <!-- Completed Result State -->
         <div 
           v-if="status === 'completed' && result"
-          class="flex-1 flex flex-col gap-8 animate-fade-in-up overflow-hidden"
+          class="flex-1 flex flex-col gap-8 animate-fade-in-up overflow-hidden min-h-0"
         >
-          <div class="grid grid-cols-12 gap-8 h-full">
+          <div class="grid grid-cols-12 gap-8 h-full min-h-0 overflow-hidden">
              <!-- Result Visualization -->
-             <div class="col-span-8 bg-white/60 backdrop-blur-xl border border-white/50 rounded-[4rem] shadow-soft-blue p-10 flex flex-col">
+             <div class="col-span-8 bg-white/60 backdrop-blur-xl border border-white/50 rounded-[4rem] shadow-soft-blue p-10 flex flex-col min-h-0 overflow-hidden">
                 <div class="flex justify-between items-center mb-8 shrink-0">
                   <div class="flex items-center gap-4">
                     <div class="w-10 h-10 bg-orange-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-orange-200">
@@ -140,7 +136,7 @@
                   </div>
                 </div>
 
-                <div class="flex-1 relative rounded-[2.5rem] overflow-hidden bg-gray-950 shadow-2xl group border-4 border-white/50">
+                <div class="flex-1 relative rounded-[2.5rem] overflow-hidden bg-gray-950 shadow-2xl group border-4 border-white/50 min-h-0">
                    <img :src="result.imageUrl" class="w-full h-full object-contain transition-transform duration-1000 group-hover:scale-105" />
                    
                    <transition name="fade">
@@ -173,8 +169,8 @@
              </div>
 
              <!-- Summary Info Card -->
-             <div class="col-span-4 flex flex-col gap-8">
-                <div class="bg-gradient-to-br from-orange-500 to-red-600 rounded-[3.5rem] p-10 text-white shadow-soft-blue flex flex-col">
+             <div class="col-span-4 flex flex-col gap-8 min-h-0 overflow-y-auto custom-scrollbar">
+                <div class="bg-gradient-to-br from-orange-500 to-red-600 rounded-[3.5rem] p-10 text-white shadow-premium flex flex-col">
                    <p class="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-2">Confidence Level</p>
                    <div class="flex items-baseline gap-2 mb-6">
                       <span class="text-8xl font-black tracking-tighter">{{ (result.confidence * 100).toFixed(0) }}</span>
@@ -188,7 +184,7 @@
                    </p>
                 </div>
 
-                <div class="flex-1 bg-white/50 backdrop-blur-xl border border-white/50 rounded-[3.5rem] p-10 shadow-soft-blue flex flex-col gap-8">
+                <div class="flex-1 glass-panel border border-white/50 rounded-[3.5rem] p-10 shadow-premium flex flex-col gap-8">
                    <div class="flex flex-col gap-1">
                       <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Recognized Identity</p>
                       <h4 class="text-4xl font-black text-gray-900 italic">ID#{{ result.individualId }}</h4>
@@ -228,7 +224,7 @@
 
       <!-- Right: History Sidebar -->
       <aside class="w-96 flex flex-col gap-8 overflow-x-hidden overflow-y-auto">
-         <div class="bg-white/40 backdrop-blur-xl border border-white/60 rounded-[3.5rem] shadow-soft-blue flex flex-col h-full overflow-hidden transition-all duration-500 px-2">
+         <div class="glass-panel border border-white/60 rounded-[3.5rem] shadow-premium flex flex-col max-h-[70vh] overflow-hidden transition-all duration-500 px-2">
             <div class="p-8 pb-4 flex justify-between items-center">
                <h3 class="text-xl font-black text-gray-800">最近任务</h3>
                <el-badge :value="history.length" type="warning" />
@@ -262,13 +258,7 @@
                </div>
             </div>
 
-            <div class="p-8 pt-0">
-               <div class="bg-gradient-to-br from-indigo-50 to-blue-50 p-6 rounded-[2rem] border border-blue-100 flex flex-col items-center text-center">
-                  <el-icon size="24" class="text-blue-500 mb-3"><Opportunity /></el-icon>
-                  <p class="text-[10px] font-bold text-blue-900 uppercase tracking-widest mb-1">Quota Status</p>
-                  <p class="text-xs text-blue-600">本月剩余额度: 4,302 / 5,000</p>
-               </div>
-            </div>
+
          </div>
       </aside>
 
@@ -439,8 +429,14 @@ const goDetails = () => {
 </script>
 
 <style scoped>
-.shadow-soft-blue {
-  box-shadow: 0 40px 100px rgba(100, 150, 255, 0.1);
+.shadow-premium {
+  box-shadow: 0 40px 100px rgba(100, 150, 255, 0.08), 
+              0 10px 30px rgba(0, 0, 0, 0.02);
+}
+
+.glass-panel {
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.75) 0%, rgba(247, 244, 239, 0.85) 100%);
+  backdrop-filter: blur(30px);
 }
 
 .premium-upload-btn {
