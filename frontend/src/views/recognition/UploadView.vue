@@ -353,33 +353,19 @@ const toAbsoluteUrl = (maybePath) => {
 const startProcess = async (file) => {
   if (status.value !== 'idle') return;
 
-  status.value = 'uploading';
-  progress.value = 5;
+  // 不改变 status，页面保持当前上传界面，不显示任何滚轮/loading
   heatmapUrl.value = null;
   showHeatmap.value = false;
 
-  // 先展示本地预览（避免网络慢时空白）
   const localPreviewUrl = URL.createObjectURL(file);
-  result.value = {
-    taskId: '',
-    individualId: '-',
-    confidence: 0,
-    imageUrl: localPreviewUrl,
-    reportId: null,
-  };
 
   try {
     const form = new FormData();
     form.append('file', file);
     form.append('type', recognitionType.value);
 
-    status.value = 'processing';
-    progress.value = 25;
-
     const res = await uploadImage(form);
     const data = res?.data || res;
-
-    progress.value = 90;
 
     const imageUrl = toAbsoluteUrl(data?.imagePath);
     const hmUrl = toAbsoluteUrl(data?.heatmapPath);
@@ -404,6 +390,13 @@ const startProcess = async (file) => {
     console.error(e);
     status.value = 'completed';
     progress.value = 100;
+    result.value = {
+      taskId: '',
+      individualId: '-',
+      confidence: 0,
+      imageUrl: localPreviewUrl,
+      reportId: null,
+    };
     ElMessage.error('识别失败，请重试');
   }
 };
