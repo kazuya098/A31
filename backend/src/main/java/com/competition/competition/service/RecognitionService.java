@@ -158,6 +158,7 @@ public class RecognitionService {
                     .heatmapPath(toAccessibleUrl(heatmapSavedPath)) // 注意力热力图 URL（可空）
                     .recognitionTime(LocalDateTime.now())
                     .individualId(individual.getId())
+                    .confidence(algoResult.getConfidence())
                     .build();
 
         } else {
@@ -310,18 +311,51 @@ public class RecognitionService {
 
     public Optional<RecordReportDto> getRecordReport(Long recordId) {
         return Optional.ofNullable(recordMapper.findById(recordId)).map(r -> {
-            String operatorName = r.getUserId() != null ? Optional.ofNullable(userMapper.findById(r.getUserId())).map(User::getUsername).orElse("") : "";
+            // 1. 修复操作员名称获取
+            String operatorName = r.getUserId() != null
+                    ? Optional.ofNullable(userMapper.findById(r.getUserId())).map(User::getUsername).orElse("演示操作员")
+                    : "演示操作员";
+
+            // 2. 【修复 Bug】修正逻辑：如果是 human 则显示人类
+            String identityLabel = "human".equalsIgnoreCase(r.getType()) ? "人类" : "非人类";
+
+            // 3. 【新增逻辑】将硬核分析结论“翻译”成客户看得懂的人话
+            String humanReadableConclusion = generateConclusion(r.getType(), r.getConfidence());
+
             return RecordReportDto.builder()
                     .recordId(r.getId())
-                    .recognitionResult(r.getIndividualId() != null ? String.valueOf(r.getIndividualId()) : r.getIdentityId())
+                    .recognitionResult(identityLabel)
                     .imagePath(toAccessibleUrl(r.getImagePath()))
                     .heatmapPath(toAccessibleUrl(r.getHeatmapPath()))
                     .recognitionTime(r.getCreatedAt())
                     .operatorName(operatorName)
                     .type(r.getType())
                     .operationStatus(r.getOperationStatus())
+                    .confidence(r.getConfidence())
                     .build();
         });
+    }
+
+    /**
+     * 客户友好型结论生成器
+     */
+    private String generateConclusion(String type, Double confidence) {
+        if (confidence == null) {
+            return "系统正在分析中，请稍候。";
+        }
+
+        String typeCn = "human".equalsIgnoreCase(type) ? "人类" : "非人类目标";
+
+        // 换算成百分比，方便判断
+        double percentage = confidence * 100;
+
+        if (percentage >= 90) {
+            return String.format("分析完成。图像特征非常清晰，系统以极高的把握（%.2f%%）判定该目标为【%s】。", percentage, typeCn);
+        } else if (percentage >= 60) {
+            return String.format("分析完成。系统倾向于认为该目标为【%s】（置信度 %.2f%%），但受光线或角度影响，建议人工复核。", percentage, typeCn);
+        } else {
+            return String.format("分析完成。当前图像质量欠佳或特征不明显，系统无法做出准确判断（置信度仅 %.2f%%），强烈建议人工介入。", percentage);
+        }
     }
 
     public List<IndividualListDto> listIndividuals(String speciesType) {

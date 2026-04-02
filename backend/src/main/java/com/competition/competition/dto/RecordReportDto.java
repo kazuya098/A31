@@ -30,4 +30,6 @@ public class RecordReportDto {
     private String type;
     /** 业务操作状态，如 待确认/已确认，对应 recognition_record.operation_status */
     private String operationStatus;
+    /**  置信度*/
+    private Double confidence;
 }

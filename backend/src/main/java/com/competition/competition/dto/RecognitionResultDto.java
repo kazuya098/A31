@@ -35,4 +35,6 @@ public class RecognitionResultDto {
     private java.time.LocalDateTime recognitionTime;
     /** 关联个体 id（同一生物展示用），对应 individual.id */
     private Long individualId;
+    /** 置信度*/
+    private Double confidence;
 }
