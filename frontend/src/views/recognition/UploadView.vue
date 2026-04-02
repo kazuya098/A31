@@ -1,17 +1,17 @@
 <template>
-  <div class="h-full font-sans bg-[#F7F4EF] flex flex-col overflow-x-hidden overflow-y-auto relative">
+  <div class="h-full font-sans bg-[#F7F4EF] flex flex-col overflow-hidden relative">
     <!-- Background Decorative Elements -->
     <div class="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-orange-200/20 blur-[120px] rounded-full animate-blob pointer-events-none"></div>
     <div class="absolute bottom-[-10%] right-[-5%] w-[45%] h-[45%] bg-blue-200/20 blur-[120px] rounded-full animate-blob animation-delay-2000 pointer-events-none"></div>
     <div class="absolute top-[20%] right-[10%] w-[20%] h-[20%] bg-purple-200/10 blur-[100px] rounded-full animate-blob animation-delay-4000 pointer-events-none"></div>
 
     <!-- Header -->
-    <header class="flex justify-between items-center mb-8 py-5 px-12 shrink-0 z-10 animate-fade-in-down">
+    <header class="flex justify-between items-center mb-4 py-3 px-12 shrink-0 z-10 animate-fade-in-down">
       <div>
-        <h1 class="text-4xl font-light tracking-tight text-gray-900 mb-2">
+        <h1 class="text-3xl font-light tracking-tight text-gray-900 mb-1">
           上传识别 <span class="font-semibold text-orange-600">分析中心</span>
         </h1>
-        <p class="text-gray-500 text-lg">利用跨时域 AI 算法进行特征索引与生物个体建模</p>
+        <p class="text-gray-500 text-sm">利用跨时域 AI 算法进行特征索引与生物个体建模</p>
       </div>
       <div class="flex items-center space-x-6">
         <el-radio-group v-model="recognitionType" class="custom-radio-group">
@@ -22,10 +22,10 @@
     </header>
 
     <!-- Main Content Area -->
-    <div class="flex-1 flex px-12 pb-8 gap-8 overflow-x-hidden overflow-y-auto z-10">
+    <div class="flex-1 flex px-12 pb-4 gap-4 overflow-hidden z-10">
       
       <!-- Left: Primary Interaction Area -->
-      <div class="flex-1 flex flex-col overflow-x-hidden overflow-y-auto min-h-0">
+      <div class="flex-1 flex flex-col overflow-hidden min-h-0">
         
         <!-- Upload State -->
         <div 
@@ -37,20 +37,20 @@
             @dragleave.prevent="dragOver = false"
             @drop.prevent="handleDrop"
             :class="[
-              'w-full bg-white/40 backdrop-blur-xl border-2 border-dashed rounded-[4rem] shadow-soft-blue flex flex-col items-center justify-center p-24 transition-all duration-700 relative overflow-hidden group',
+              'w-full bg-white/40 backdrop-blur-xl border-2 border-dashed rounded-[4rem] shadow-soft-blue flex flex-col items-center justify-center p-20 transition-all duration-700 relative overflow-hidden group',
               dragOver ? 'border-orange-500 bg-orange-50/50 scale-[1.01]' : 'border-white/60 bg-white/40',
               status === 'uploading' ? 'opacity-60 pointer-events-none' : 'hover:bg-white/60 hover:border-orange-200'
             ]"
           >
             <!-- Decorative circle in background -->
-            <div class="absolute -top-24 -right-24 w-64 h-64 bg-orange-50 rounded-full opacity-50 group-hover:scale-110 transition-transform duration-1000"></div>
+            <div class="absolute -top-16 -right-16 w-48 h-48 bg-orange-50 rounded-full opacity-50 group-hover:scale-110 transition-transform duration-1000"></div>
             
-            <div class="relative z-10 flex flex-col items-center">
+            <div class="relative z-10 flex flex-col items-center text-center">
               <div class="w-32 h-32 bg-gradient-to-br from-orange-400 to-orange-600 rounded-3xl flex items-center justify-center mb-10 shadow-lg group-hover:rotate-6 transition-transform">
                 <el-icon size="56" class="text-white"><UploadFilled /></el-icon>
               </div>
-              <h2 class="text-4xl font-black text-gray-800 mb-6 tracking-tight">拖拽影像至此开始识别</h2>
-              <p class="text-gray-500 text-center max-w-lg mb-12 text-lg leading-relaxed font-light">
+              <h2 class="text-4xl font-black text-gray-800 mb-6 tracking-tight">拖拽影像至此</h2>
+              <p class="text-gray-500 text-center max-w-md mb-8 text-sm leading-relaxed font-light">
                 系统将自动为您分配边缘计算节点，进行跨地域、跨时域的特征比对与生物多样性数据同步。
               </p>
               
@@ -122,17 +122,17 @@
         >
           <div class="grid grid-cols-12 gap-8 h-full min-h-0 overflow-hidden">
              <!-- Result Visualization -->
-             <div class="col-span-8 bg-white/60 backdrop-blur-xl border border-white/50 rounded-[4rem] shadow-soft-blue p-10 flex flex-col min-h-0 overflow-hidden">
-                <div class="flex justify-between items-center mb-8 shrink-0">
-                  <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 bg-orange-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-orange-200">
-                      <el-icon size="20"><Picture /></el-icon>
+             <div class="col-span-8 bg-white/60 backdrop-blur-xl border border-white/50 rounded-[3rem] shadow-soft-blue p-6 flex flex-col min-h-0 overflow-hidden">
+                <div class="flex justify-between items-center mb-4 shrink-0">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-orange-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-orange-200">
+                      <el-icon size="16"><Picture /></el-icon>
                     </div>
-                    <h3 class="text-2xl font-black text-gray-800">视觉分析报告</h3>
+                    <h3 class="text-xl font-black text-gray-800">视觉分析报告</h3>
                   </div>
-                  <div class="flex items-center gap-6">
-                     <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Heatmap Filter</span>
-                     <el-switch v-model="showHeatmap" class="custom-orange-switch" />
+                  <div class="flex items-center gap-4">
+                     <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Heatmap Filter</span>
+                     <el-switch v-model="showHeatmap" size="small" class="custom-orange-switch" />
                   </div>
                 </div>
 
@@ -162,33 +162,33 @@
                    </div>
                 </div>
 
-                <div class="mt-8 flex justify-center gap-6 shrink-0">
-                   <el-button size="large" @click="reset" :icon="RefreshLeft" class="round-btn">放弃并重试</el-button>
-                   <el-button size="large" type="primary" :icon="View" @click="goDetails" class="round-btn glow-btn">同步至个体档案</el-button>
+                <div class="mt-4 flex justify-center gap-4 shrink-0">
+                   <el-button size="default" @click="reset" :icon="RefreshLeft" class="round-btn">放弃重试</el-button>
+                   <el-button size="default" type="primary" :icon="View" @click="goDetails" class="round-btn glow-btn">同步至个体档案</el-button>
                 </div>
              </div>
 
-             <!-- Summary Info Card -->
-             <div class="col-span-4 flex flex-col gap-8 min-h-0 overflow-y-auto custom-scrollbar">
-                <div class="bg-gradient-to-br from-orange-500 to-red-600 rounded-[3.5rem] p-10 text-white shadow-premium flex flex-col">
-                   <p class="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-2">Confidence Level</p>
-                   <div class="flex items-baseline gap-2 mb-6">
-                      <span class="text-8xl font-black tracking-tighter">{{ (result.confidence * 100).toFixed(0) }}</span>
-                      <span class="text-3xl font-bold">%</span>
-                   </div>
-                   <div class="w-full bg-black/10 h-3 rounded-full overflow-hidden border border-white/10 p-0.5">
-                      <div class="h-full bg-white rounded-full shadow-[0_0_15px_white]" :style="{ width: result.confidence * 100 + '%' }"></div>
-                   </div>
-                   <p class="mt-6 text-xs font-medium opacity-80 leading-relaxed italic">
-                     "基于 VGG-19 编码器的特征向量距离计算结果，置信度极高，符合行业标准。"
-                   </p>
-                </div>
-
-                <div class="flex-1 glass-panel border border-white/50 rounded-[3.5rem] p-10 shadow-premium flex flex-col gap-8">
-                   <div class="flex flex-col gap-1">
-                      <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Recognized Identity</p>
-                      <h4 class="text-4xl font-black text-gray-900 italic">ID#{{ result.individualId }}</h4>
-                   </div>
+              <!-- Summary Info Card -->
+              <div class="col-span-4 flex flex-col gap-4 min-h-0">
+                 <div class="bg-gradient-to-br from-orange-500 to-red-600 rounded-[3rem] p-6 text-white shadow-premium flex flex-col shrink-0">
+                    <p class="text-[9px] font-black uppercase tracking-[0.2em] opacity-70 mb-1">Confidence Level</p>
+                    <div class="flex items-baseline gap-2 mb-3">
+                       <span class="text-6xl font-black tracking-tighter">{{ (result.confidence * 100).toFixed(0) }}</span>
+                       <span class="text-xl font-bold">%</span>
+                    </div>
+                    <div class="w-full bg-black/10 h-2 rounded-full overflow-hidden border border-white/10 p-0.5">
+                       <div class="h-full bg-white rounded-full shadow-[0_0_15px_white]" :style="{ width: result.confidence * 100 + '%' }"></div>
+                    </div>
+                    <p class="mt-3 text-[10px] font-medium opacity-80 leading-relaxed italic">
+                      "特征向量距离计算结果，置信度极高。"
+                    </p>
+                 </div>
+ 
+                 <div class="flex-1 glass-panel border border-white/50 rounded-[3rem] p-6 shadow-premium flex flex-col gap-4 overflow-hidden">
+                    <div class="flex flex-col gap-0.5">
+                       <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Recognized Identity</p>
+                       <h4 class="text-3xl font-black text-gray-900 italic">ID#{{ result.individualId }}</h4>
+                    </div>
 
                    <div class="space-y-6">
                       <div class="flex items-center gap-4">
@@ -223,8 +223,8 @@
       </div>
 
       <!-- Right: History Sidebar -->
-      <aside class="w-96 flex flex-col gap-8 overflow-x-hidden overflow-y-auto">
-         <div class="glass-panel border border-white/60 rounded-[3.5rem] shadow-premium flex flex-col max-h-[70vh] overflow-hidden transition-all duration-500 px-2">
+      <aside class="w-80 flex flex-col gap-4 overflow-hidden">
+         <div class="glass-panel border border-white/60 rounded-[3rem] shadow-premium flex flex-col max-h-[65vh] overflow-hidden transition-all duration-500 px-2 shrink-0">
             <div class="p-8 pb-4 flex justify-between items-center">
                <h3 class="text-xl font-black text-gray-800">最近任务</h3>
                <el-badge :value="history.length" type="warning" />

@@ -1,5 +1,5 @@
 <template>
-  <div ref="chartRef" :style="{ height: height, width: '100%' }"></div>
+  <div ref="chartRef" :style="{ height: height, width: '100%' }" class="accuracy-chart-container"></div>
 </template>
 
 <script setup>
@@ -49,7 +49,7 @@ const initChart = () => {
         name: d.name,
         value: d.value,
         itemStyle: d.itemStyle,
-        label: d.name === '指纹信息' ? { rotate: 180 } : undefined
+        label: d.name === '指纹信息' ? { rotate: 0 } : undefined
       })),
       coordinateSystem: 'polar',
       label: {
@@ -84,3 +84,14 @@ onMounted(() => {
 
 watch(() => props.data, initChart, { deep: true });
 </script>
+<style scoped>
+.accuracy-chart-container {
+  transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: pointer;
+}
+
+.accuracy-chart-container:hover {
+  transform: rotate(8deg) scale(1.02);
+  filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.05));
+}
+</style>

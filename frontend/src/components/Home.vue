@@ -29,7 +29,7 @@
       <!-- KPI 统计卡片区 -->
       <div class="grid grid-cols-4 gap-12 mb-20">
         <div v-for="(kpi, index) in kpis" :key="index" 
-             :class="['p-8 rounded-[2rem] animate-staggered-entry transition-transform hover:-translate-y-2', kpi.bgClass]"
+             :class="['p-8 rounded-[2rem] animate-staggered-entry kpi-card', kpi.bgClass]"
              :style="{ animationDelay: `${index * 100}ms` }">
           <div :class="['w-12 h-12 rounded-full flex items-center justify-center mb-6', kpi.iconBg]">
             <el-icon :class="['w-6 h-6', kpi.iconColor]" :size="24"><component :is="kpi.icon" /></el-icon>
@@ -44,7 +44,7 @@
       </div>
 
       <!-- 图表控制面板区 -->
-      <div class="grid grid-cols-3 gap-16 flex-1 mb-16">
+      <div class="grid grid-cols-3 gap-16 flex-1 mb-8">
         <!-- 柱状图：识别数量统计 -->
         <div class="col-span-2 bg-white/60 backdrop-blur-md border border-white/50 p-10 rounded-[2.5rem] shadow-soft-blue animate-fade-in-up hover:shadow-soft-blue transition-shadow duration-500">
           <div class="flex justify-between items-center mb-8">
@@ -68,7 +68,7 @@
       </div>
       
       <!-- 最近识别记录 -->
-      <div class="mt-16 bg-white/60 backdrop-blur-md border border-white/50 p-10 rounded-[2.5rem] shadow-soft-blue animate-fade-in-up" style="animation-delay: 500ms;">
+      <div class="mt-8 bg-white/60 backdrop-blur-md border border-white/50 p-10 rounded-[2.5rem] shadow-soft-blue animate-fade-in-up" style="animation-delay: 500ms;">
         <div class="flex justify-between items-center mb-8">
           <h3 class="text-xl font-semibold text-gray-800">最近识别记录</h3>
           <button @click="router.push('/records')" class="text-sm font-medium text-orange-600 hover:text-orange-700 hover:underline">查看全部</button>
@@ -218,6 +218,21 @@ const recentRecords = ref([
 </script>
 
 <style scoped>
+.kpi-card {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
 
+.kpi-card:hover {
+  animation: kpi-bounce 0.6s ease-in-out infinite;
+}
 
+@keyframes kpi-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
 </style>

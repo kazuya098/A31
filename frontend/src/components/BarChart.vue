@@ -21,7 +21,23 @@ const initChart = () => {
   chartInstance = echarts.init(chartRef.value);
 
   const option = {
-    tooltip: { trigger: 'axis' },
+    tooltip: { 
+      trigger: 'axis',
+      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+      borderWidth: 0,
+      textStyle: { color: '#4b5563' },
+      formatter: (params) => {
+        let res = `<div style="font-weight: 600; margin-bottom: 4px;">${params[0].axisValue}</div>`;
+        params.forEach(p => {
+          const val = p.seriesName === '平均准确率' ? props.lineData[p.dataIndex] + '%' : p.value;
+          res += `<div style="display: flex; align-items: center; justify-content: space-between; gap: 20px;">
+            <span style="display: flex; align-items: center;">${p.marker} ${p.seriesName}</span>
+            <span style="font-weight: 700;">${val}</span>
+          </div>`;
+        });
+        return res;
+      }
+    },
     legend: {
       data: ['识别数量', '平均准确率'],
       textStyle: { color: '#6b7280' }, // Tailwind gray-500
@@ -33,7 +49,7 @@ const initChart = () => {
       left: '0%',
       right: '0%',
       bottom: '15%',
-      top: '10%',
+      top: '15%',
       containLabel: true,
       borderColor: '#f3f4f6', // Tailwind gray-100
     },
@@ -51,14 +67,6 @@ const initChart = () => {
         axisLabel: { color: '#9ca3af' },
         axisLine: { show: false }, 
         splitLine: { show: true, lineStyle: { color: '#f3f4f6', type: 'dashed' } }, 
-      },
-      {
-        type: 'value',
-        axisLabel: { color: '#9ca3af', formatter: '{value}%' },
-        axisLine: { show: false }, 
-        splitLine: { show: false }, 
-        min: 0,
-        max: 100,
       }
     ],
     series: [
@@ -70,8 +78,6 @@ const initChart = () => {
         itemStyle: {
           borderRadius: [12, 12, 0, 0], // Top rounded corners
           color: function(params) {
-            // Apply gradient with fading opacity towards right as requested originally, 
-            // but aligned with new anti-mainstream aesthetic (orange shades)
             const startOpacity = Math.max(0.4, 1 - params.dataIndex * 0.1);
             return new echarts.graphic.LinearGradient(0, 0, 0, 1, [
               { offset: 0, color: `rgba(249, 115, 22, ${startOpacity})` }, // Tailwind orange-500
@@ -79,7 +85,6 @@ const initChart = () => {
             ]);
           },
         },
-        // Bouncy animation implementation
         animationEasing: 'bounceOut',
         animationDelay: function (idx) {
           return idx * 100;
@@ -89,10 +94,19 @@ const initChart = () => {
       {
         name: '平均准确率',
         type: 'line',
-        yAxisIndex: 1,
-        data: props.lineData,
+        yAxisIndex: 0,
+        data: props.barData,
         symbol: 'circle',
         symbolSize: 8,
+        label: {
+          show: true,
+          position: 'top',
+          formatter: (params) => props.lineData[params.dataIndex] + '%',
+          color: '#ea580c',
+          fontSize: 11,
+          fontWeight: 'bold',
+          distance: 10
+        },
         lineStyle: {
           width: 3,
           color: '#ea580c', // Tailwind orange-600
