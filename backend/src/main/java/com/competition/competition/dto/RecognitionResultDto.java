@@ -5,6 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+import java.util.List;
+
 /**
  * 返回给前端的识别结果 DTO。，上传识别接口返回，以及弹窗报告的使用
  * 【需填充】：与前端约定字段名；与算法返回结构对齐后再映射到此 DTO。
@@ -37,4 +40,29 @@ public class RecognitionResultDto {
     private Long individualId;
     /** 置信度*/
     private Double confidence;
+    
+    /** 拍摄时间，用于展示该图片的拍摄时间 */
+    private LocalDate shotTime;
+    
+    /** 详细报告内容，包含特征点匹配率等详细信息 */
+    private String reportDetails;
+    
+    /** 同一个体的多张历史图片列表（包含拍摄时间） */
+    private List<IndividualImageInfo> relatedImages;
+    
+    /** 个体图片信息 DTO */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class IndividualImageInfo {
+        /** 图片 ID */
+        private Long imageId;
+        /** 图片路径 */
+        private String imagePath;
+        /** 拍摄时间 */
+        private LocalDate shotTime;
+        /** 识别记录 ID */
+        private Long recordId;
+    }
 }

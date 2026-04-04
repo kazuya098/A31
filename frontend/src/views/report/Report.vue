@@ -82,8 +82,23 @@
       <!-- 详细分析内容 -->
       <section class="report-section mb-12">
         <h2 class="section-title mb-6">分析结论</h2>
-        <div class="analysis-content p-8 bg-white border border-gray-100 rounded leading-relaxed text-gray-700 text-sm italic shadow-inner">
-          {{ reportData.details || '系统正在对特征偏移量、光影噪声及跨时域衰减系数进行二次拟合。初步结论：生物特征匹配极度稳定。' }}
+        <div class="analysis-content p-8 bg-white border border-gray-100 rounded leading-relaxed text-gray-700 text-sm italic shadow-inner" style="white-space: pre-line;">
+          {{ reportData.details || reportData.analysisDetails || '系统正在对特征偏移量、光影噪声及跨时域衰减系数进行二次拟合。初步结论：生物特征匹配极度稳定。' }}
+        </div>
+      </section>
+      
+      <!-- 同一个体的多张图片展示 -->
+      <section class="report-section mb-12" v-if="reportData.relatedImages && reportData.relatedImages.length > 0">
+        <h2 class="section-title mb-6">同个体历史影像</h2>
+        <div class="grid grid-cols-4 gap-4">
+          <div v-for="(img, idx) in reportData.relatedImages" :key="idx" class="bg-gray-50 border border-gray-100 rounded-lg p-2 text-center">
+            <el-image 
+              :src="toAbsoluteUrl(img.imagePath)" 
+              fit="cover" 
+              class="w-full h-32 rounded shadow-sm"
+            />
+            <p class="text-xs text-gray-500 mt-2">拍摄时间：{{ img.shotTime }}</p>
+          </div>
         </div>
       </section>
 

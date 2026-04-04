@@ -64,7 +64,7 @@
                 >
                   <el-icon class="mr-2"><Plus /></el-icon> 选择图像文件
                 </el-button>
-                <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="handleFileChange">
+                <input type="file" ref="fileInput" class="hidden" accept="image/*" multiple @change="handleFileChange">
               </div>
 
               <div class="mt-12 flex items-center gap-8 opacity-40">
@@ -288,7 +288,7 @@ import {
   InfoFilled
 } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
-import { uploadImage } from '@/services/modules/recognition.js';
+import { uploadImage, batchUploadImages, getIndividualReport } from '@/services/modules/recognition.js';
 
 const router = useRouter();
 
@@ -327,14 +327,26 @@ const openFileDialog = () => {
 };
 
 const handleFileChange = (e) => {
-  const file = e.target.files[0];
-  if (file) startProcess(file);
+  const files = Array.from(e.target.files);
+  if (files.length > 0) {
+    if (files.length === 1) {
+      startProcess(files[0]);
+    } else {
+      startBatchProcess(files);
+    }
+  }
 };
 
 const handleDrop = (e) => {
   dragOver.value = false;
-  const file = e.dataTransfer.files[0];
-  if (file) startProcess(file);
+  const files = Array.from(e.dataTransfer.files);
+  if (files.length > 0) {
+    if (files.length === 1) {
+      startProcess(files[0]);
+    } else {
+      startBatchProcess(files);
+    }
+  }
 };
 
 const backendOrigin = computed(() => {
@@ -376,6 +388,9 @@ const startProcess = async (file) => {
       confidence: (typeof data?.confidence === 'number' ? data.confidence : 0),
       imageUrl: imageUrl || localPreviewUrl,
       reportId: data?.taskId ? Number(data.taskId) : null,
+      shotTime: data?.shotTime,
+      reportDetails: data?.reportDetails,
+      relatedImages: data?.relatedImages || [],
     };
     heatmapUrl.value = hmUrl;
     status.value = 'completed';
@@ -398,6 +413,66 @@ const startProcess = async (file) => {
       reportId: null,
     };
     ElMessage.error('识别失败，请重试');
+  }
+};
+
+// 批量上传处理
+const startBatchProcess = async (files) => {
+  if (status.value !== 'idle') return;
+  
+  status.value = 'uploading';
+  progress.value = 10;
+  
+  try {
+    const form = new FormData();
+    files.forEach((file, index) => {
+      form.append('files', file);
+    });
+    form.append('type', recognitionType.value);
+    
+    // 为每张图片添加拍摄时间（这里使用当前日期，实际可由用户提供）
+    const today = new Date().toISOString().split('T')[0];
+    for (let i = 0; i < files.length; i++) {
+      form.append('shotTimes', today);
+    }
+    
+    progress.value = 30;
+    
+    const res = await batchUploadImages(form);
+    const results = res?.data || res;
+    
+    progress.value = 100;
+    status.value = 'completed';
+    
+    // 显示第一个成功的结果
+    const firstSuccess = results.find(r => r.status === 'done');
+    if (firstSuccess) {
+      const localPreviewUrl = URL.createObjectURL(files[0]);
+      const imageUrl = toAbsoluteUrl(firstSuccess.imagePath);
+      const hmUrl = toAbsoluteUrl(firstSuccess.heatmapPath);
+      
+      result.value = {
+        taskId: firstSuccess.taskId || '',
+        individualId: firstSuccess.individualId ?? firstSuccess.identityId ?? '-',
+        confidence: (typeof firstSuccess.confidence === 'number' ? firstSuccess.confidence : 0),
+        imageUrl: imageUrl || localPreviewUrl,
+        reportId: firstSuccess.taskId ? Number(firstSuccess.taskId) : null,
+        shotTime: firstSuccess.shotTime,
+        reportDetails: firstSuccess.reportDetails,
+        relatedImages: firstSuccess.relatedImages || [],
+        batchResults: results, // 保存所有结果
+      };
+      heatmapUrl.value = hmUrl;
+      
+      ElMessage.success(`批量上传完成！共 ${results.length} 张图片，成功 ${results.filter(r => r.status === 'done').length} 张`);
+    } else {
+      ElMessage.warning('批量上传完成，但所有图片识别均失败');
+    }
+  } catch (e) {
+    console.error(e);
+    status.value = 'completed';
+    progress.value = 100;
+    ElMessage.error('批量上传失败，请重试');
   }
 };
 

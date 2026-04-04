@@ -47,6 +47,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
+
         <!-- MySQL 驱动：连接公网/本机 MySQL -->
         <dependency>
             <groupId>com.mysql</groupId>
@@ -75,10 +76,17 @@
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
+        </dependency>
+        <!-- Spring Boot Test: 包含@SpringBootTest、MockMvc 等完整测试支持 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

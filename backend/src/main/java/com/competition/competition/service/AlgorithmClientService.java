@@ -12,6 +12,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -247,5 +248,22 @@ public class AlgorithmClientService {
         private String identityId;
         private Double confidence;
         private String heatmapBase64;
+        
+        /** 新增：算法返回的同一个体多张历史图片 */
+        private List<RelatedImageInfo> relatedImages;
+        
+        /** 新增：算法返回的详细报告内容 */
+        private String reportDetails;
+        
+        @lombok.Data
+        @lombok.Builder
+        @lombok.NoArgsConstructor
+        @lombok.AllArgsConstructor
+        public static class RelatedImageInfo {
+            private Long imageId;
+            private String imagePath;
+            private String shotTime;
+            private Long recordId;
+        }
     }
 }

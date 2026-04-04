@@ -209,6 +209,8 @@ import {
   Timer,
   Picture
 } from '@element-plus/icons-vue';
+import { getIndividualReport } from '@/services/modules/recognition.js';
+import { ElMessage } from 'element-plus';
 
 // State
 const searchQuery = ref('');
@@ -249,24 +251,48 @@ const selectIndividual = async (id) => {
   selectedIndividualId.value = id;
   detailsLoading.value = true;
   
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 600));
-  
-  const found = individuals.value.find(item => item.id === id);
-  if (found) {
-    const imagesCount = Math.floor(Math.random() * 15) + 5;
-    individualDetails.value = {
-      id: found.id,
-      firstSeen: found.firstSeen,
-      lastSeen: found.lastSeen,
-      totalCount: found.count * 3, // Just for variety
-      images: Array.from({ length: imagesCount }, (_, j) => ({
-        id: id * 100 + j,
-        url: `https://picsum.photos/seed/${id}_${j}/300/400`,
-        captureTime: new Date(new Date(found.firstSeen).getTime() + (new Date(found.lastSeen).getTime() - new Date(found.firstSeen).getTime()) * Math.random()).toISOString(),
-        confidence: 0.85 + Math.random() * 0.14
-      })).sort((a, b) => new Date(b.captureTime) - new Date(a.captureTime))
-    };
+  try {
+    // 调用真实 API
+    const res = await getIndividualReport(id);
+    const data = res?.data || res;
+    
+    if (data) {
+      individualDetails.value = {
+        id: data.individualId,
+        firstSeen: data.images?.[0]?.shotTime ? new Date(data.images[0].shotTime).toISOString() : new Date().toISOString(),
+        lastSeen: data.images?.[data.images.length - 1]?.shotTime ? new Date(data.images[data.images.length - 1].shotTime).toISOString() : new Date().toISOString(),
+        totalCount: data.images?.length || 0,
+        images: (data.images || []).map(img => ({
+          id: img.imageId,
+          url: toAbsoluteUrl(img.imagePath),
+          captureTime: img.shotTime ? new Date(img.shotTime).toISOString() : new Date().toISOString(),
+          confidence: 0.95, // 可以从后端返回，这里给默认值
+          recordId: img.recognitionRecordId
+        })).sort((a, b) => new Date(b.captureTime).getTime() - new Date(a.captureTime).getTime())
+      };
+      ElMessage.success('加载成功');
+    }
+  } catch (error) {
+    console.error('Failed to fetch individual report:', error);
+    ElMessage.error('加载失败，使用模拟数据');
+    
+    // Fallback to mock data
+    const found = individuals.value.find(item => item.id === id);
+    if (found) {
+      const imagesCount = Math.floor(Math.random() * 15) + 5;
+      individualDetails.value = {
+        id: found.id,
+        firstSeen: found.firstSeen,
+        lastSeen: found.lastSeen,
+        totalCount: found.count * 3, // Just for variety
+        images: Array.from({ length: imagesCount }, (_, j) => ({
+          id: id * 100 + j,
+          url: `https://picsum.photos/seed/${id}_${j}/300/400`,
+          captureTime: new Date(new Date(found.firstSeen).getTime() + (new Date(found.lastSeen).getTime() - new Date(found.firstSeen).getTime()) * Math.random()).toISOString(),
+          confidence: 0.85 + Math.random() * 0.14
+        })).sort((a, b) => new Date(b.captureTime).getTime() - new Date(a.captureTime).getTime())
+      };
+    }
   }
   
   detailsLoading.value = false;
@@ -295,6 +321,18 @@ const formatShortTime = (isoString) => {
     hour: '2-digit',
     minute: '2-digit'
   });
+};
+
+const backendOrigin = computed(() => {
+  const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+  return apiBase.replace(/\/api\/?$/, '');
+});
+
+const toAbsoluteUrl = (maybePath) => {
+  if (!maybePath) return null;
+  if (/^https?:\/\//i.test(maybePath)) return maybePath;
+  if (maybePath.startsWith('/')) return backendOrigin.value + maybePath;
+  return backendOrigin.value + '/' + maybePath;
 };
 
 onMounted(() => {
