@@ -247,7 +247,8 @@ public class AlgorithmClientService {
     public static class AlgorithmResult {
         private String identityId;
         private Double confidence;
-        private String heatmapBase64;
+        private String heatmapBase64;  // 保留兼容旧逻辑，但新算法返回 URL
+        private String heatmapUrl;     // 新增：算法返回的热力图 URL
         
         /** 新增：算法返回的同一个体多张历史图片 */
         private List<RelatedImageInfo> relatedImages;

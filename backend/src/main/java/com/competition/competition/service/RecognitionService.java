@@ -67,10 +67,14 @@ public class RecognitionService {
         return Paths.get(uploadPath).toAbsolutePath().normalize();
     }
 
-    /** 将本地文件路径转换为可访问的 URL */
+    /** 将本地文件路径转换为可访问的 URL，如果已经是 URL 则直接返回 */
     private String toAccessibleUrl(String localPath) {
         if (localPath == null || localPath.isEmpty()) {
             return null;
+        }
+        // 如果已经是完整的 URL，直接返回
+        if (localPath.startsWith("http://") || localPath.startsWith("https://")) {
+            return localPath;
         }
         // 提取文件名
         String filename = Paths.get(localPath).getFileName().toString();
@@ -117,13 +121,18 @@ public class RecognitionService {
         recordMapper.insert(record);
 
         // ====== 2. 调用算法服务进行识别（传递字节数组而不是 MultipartFile）======
-        AlgorithmClientService.AlgorithmResult algoResult = recognizeByAlgorithm(fileBytes, originalFilename, contentType);
+        AlgorithmClientService.AlgorithmResult algoResult = recognizeByAlgorithm(fileBytes, originalFilename, contentType, record.getId());
 
         if (algoResult != null) {
             // 识别成功
 
-            // 4.0 处理注意力热力图（可选）
-            String heatmapSavedPath = saveHeatmapBase64(algoResult.getHeatmapBase64(), record.getId());
+            // 4.0 处理注意力热力图（算法返回的是 URL，直接使用）
+            String heatmapPath = algoResult.getHeatmapUrl();
+            // 如果是相对路径，拼接基础地址
+            if (heatmapPath != null && !heatmapPath.startsWith("http")) {
+                String baseUrl = algorithmUrl.replace("/predict", "").replace("/predict_batch", "");
+                heatmapPath = baseUrl + heatmapPath;
+            }
 
             // 4.1 查找或创建个体（归并同一生物）
             Individual individual = findOrCreateIndividual(
@@ -139,18 +148,31 @@ public class RecognitionService {
                     algoResult.getIdentityId(),    // "person_001"（数字或字符串）
                     algoResult.getConfidence(),    // ✅ 保存置信度
                     individual.getId(),      // 个体 ID
-                    heatmapSavedPath        // 注意力热力图路径（本地路径，可空）
+                    heatmapPath        // 注意力热力图 URL（可空）
             );
             // SQL: UPDATE recognition_record SET status='done', identity_id='person_001', individual_id=? WHERE id=1
 
-            // 4.3 创建个体图片记录（关联到个体）
+            // 4.3 创建个体图片记录（关联到个体）- 前端上传的图片 shot_time 设为 null
             IndividualImage img = new IndividualImage();
             img.setIndividualId(individual.getId());
             img.setImagePath(savePath.toString());
-            img.setShotTime(LocalDate.now());
+            img.setShotTime(null);  // 前端上传的图片，shot_time 设为 null
             img.setRecognitionRecordId(record.getId());
             individualImageMapper.insert(img);
             // SQL: INSERT INTO individual_image (...) VALUES (...)
+
+            // 4.3.5 保存算法返回的 gallery_images 到 individual_image 表
+            if (algoResult.getRelatedImages() != null && !algoResult.getRelatedImages().isEmpty()) {
+                for (var algoImg : algoResult.getRelatedImages()) {
+                    IndividualImage galleryImg = new IndividualImage();
+                    galleryImg.setIndividualId(individual.getId());
+                    galleryImg.setImagePath(algoImg.getImagePath());
+                    // 使用算法返回的 date 作为 shot_time
+                    galleryImg.setShotTime(algoImg.getShotTime() != null ? LocalDate.parse(algoImg.getShotTime()) : null);
+                    galleryImg.setRecognitionRecordId(record.getId());
+                    individualImageMapper.insert(galleryImg);
+                }
+            }
 
             // 4.4 如果个体没有封面图，设置封面图
             if (individual.getCoverImagePath() == null || individual.getCoverImagePath().isBlank()) {
@@ -191,7 +213,7 @@ public class RecognitionService {
                     .identityId(algoResult.getIdentityId())             // "person_001"
                     .message("识别成功")
                     .imagePath(toAccessibleUrl(savePath.toString()))        // "/static/uploads/a1b2c3d4...jpg"
-                    .heatmapPath(toAccessibleUrl(heatmapSavedPath)) // 注意力热力图 URL（可空）
+                    .heatmapPath(heatmapPath) // 直接使用算法返回的热力图 URL
                     .recognitionTime(LocalDateTime.now())
                     .individualId(individual.getId())
                     .confidence(algoResult.getConfidence())
@@ -507,7 +529,8 @@ public class RecognitionService {
      */
     private AlgorithmClientService.AlgorithmResult recognizeByAlgorithm(byte[] fileBytes, 
                                                                         String originalFilename, 
-                                                                        String contentType) {
+                                                                        String contentType,
+                                                                        Long recordId) {
         
         for (int attempt = 1; attempt <= AlgorithmClientService.MAX_RETRIES; attempt++) {
             HttpURLConnection conn = null;
@@ -564,6 +587,7 @@ public class RecognitionService {
                         String id = null;
                         Double confidence = null;
                         String heatmapBase64 = null;
+                        String heatmapUrl = null;  // 新增：算法返回的热力图 URL
 
                         // 1. 解析 identity_id（兼容数字和字符串）
                         int identityIdIndex = responseStr.indexOf("\"identity_id\"");
@@ -636,7 +660,25 @@ public class RecognitionService {
                             }
                         }
 
-                        // 3. 解析 heatmap_base64
+                        // 3. 解析 heatmap_url（新算法返回的是 URL）
+                        int heatmapUrlIndex = responseStr.indexOf("\"heatmap_url\"");
+                        if (heatmapUrlIndex == -1) {
+                            heatmapUrlIndex = responseStr.indexOf("\"heatmapUrl\"");
+                        }
+                        if (heatmapUrlIndex != -1) {
+                            int colonIndex = responseStr.indexOf(':', heatmapUrlIndex);
+                            if (colonIndex != -1) {
+                                int startQuote = responseStr.indexOf('"', colonIndex + 1);
+                                if (startQuote != -1) {
+                                    int endQuote = responseStr.indexOf('"', startQuote + 1);
+                                    if (endQuote != -1) {
+                                        heatmapUrl = responseStr.substring(startQuote + 1, endQuote);
+                                    }
+                                }
+                            }
+                        }
+
+                        // 4. 兼容旧的 heatmap_base64 字段
                         String[] heatmapKeys = {"heatmap_base64", "heatmapBase64", "heatmap_image_base64", "attention_heatmap_base64"};
                         for (String key : heatmapKeys) {
                             int heatmapIndex = responseStr.indexOf("\"" + key + "\"");
@@ -655,14 +697,25 @@ public class RecognitionService {
                             }
                         }
 
-                        log.info("Parsed identity_id: {}, confidence: {}, heatmap_base64 present: {}", id, confidence, heatmapBase64 != null);
+                        log.info("Parsed identity_id: {}, confidence: {}, heatmap_url: {}, heatmap_base64 present: {}", 
+                                id, confidence, heatmapUrl, heatmapBase64 != null);
 
                         if (id != null) {
+                            // 处理算法返回的 gallery_images（兼容 HttpURLConnection 方式）
+                            List<AlgorithmClientService.AlgorithmResult.RelatedImageInfo> mappedImages = new ArrayList<>();
+                            int galleryIndex = responseStr.indexOf("\"gallery_images\"");
+                            if (galleryIndex == -1) galleryIndex = responseStr.indexOf("\"galleryImages\"");
+                            
+                            // 简单解析：如果算法返回了 gallery_images，这里暂时先不处理 Base64 转存
+                            // 因为 HttpURLConnection 方式是旧逻辑，建议统一使用 WebClient
+                            
                             conn.disconnect();
                             return AlgorithmClientService.AlgorithmResult.builder()
                                     .identityId(id)
                                     .confidence(confidence)
                                     .heatmapBase64(heatmapBase64)
+                                    .heatmapUrl(heatmapUrl)  // 设置热力图 URL
+                                    .relatedImages(mappedImages)
                                     .build();
                         }
                     }
@@ -776,14 +829,19 @@ public class RecognitionService {
             try {
                 // 用 WebClient 调算法（使用内存中的字节，不依赖临时文件）
                 AlgorithmClientService.AlgorithmResult algoResult =
-                        callAlgorithmWithWebClient(fileBytes, originalFilename, contentType);
+                        callAlgorithmWithWebClient(fileBytes, originalFilename, contentType, record.getId());
 
                 if (algoResult == null) {
                     throw new RuntimeException("算法服务无响应");
                 }
 
-                // 保存 heatmap（复用现有私有方法）
-                String heatmapPath = saveHeatmapBase64(algoResult.getHeatmapBase64(), record.getId());
+                // 处理 heatmap（算法返回的是 URL，直接使用）
+                String heatmapPath = algoResult.getHeatmapUrl();
+                // 如果是相对路径，拼接基础地址
+                if (heatmapPath != null && !heatmapPath.startsWith("http")) {
+                    String baseUrl = algorithmUrl.replace("/predict", "").replace("/predict_batch", "");
+                    heatmapPath = baseUrl + heatmapPath;
+                }
 
                 //  查重 / 新建 individual（复用现有私有方法）
                 Individual individual = findOrCreateIndividual(
@@ -794,13 +852,26 @@ public class RecognitionService {
                         record.getId(), "done", algoResult.getIdentityId(),
                         algoResult.getConfidence(), individual.getId(), heatmapPath);
 
-                //  插 individual_image，shot_time 取前端传入值（而非 LocalDate.now()）
+                //  插 individual_image，前端上传的图片 shot_time 设为 null
                 IndividualImage img = new IndividualImage();
                 img.setIndividualId(individual.getId());
                 img.setImagePath(savePath.toString());
-                img.setShotTime(meta.getShotTime() != null ? meta.getShotTime() : LocalDate.now());
+                img.setShotTime(null);  // 前端上传的图片，shot_time 设为 null
                 img.setRecognitionRecordId(record.getId());
                 individualImageMapper.insert(img);
+
+                //  保存算法返回的 gallery_images 到 individual_image 表
+                if (algoResult.getRelatedImages() != null && !algoResult.getRelatedImages().isEmpty()) {
+                    for (var algoImg : algoResult.getRelatedImages()) {
+                        IndividualImage galleryImg = new IndividualImage();
+                        galleryImg.setIndividualId(individual.getId());
+                        galleryImg.setImagePath(algoImg.getImagePath());
+                        // 使用算法返回的 date 作为 shot_time
+                        galleryImg.setShotTime(algoImg.getShotTime() != null ? LocalDate.parse(algoImg.getShotTime()) : null);
+                        galleryImg.setRecognitionRecordId(record.getId());
+                        individualImageMapper.insert(galleryImg);
+                    }
+                }
 
                 // 更新封面（复用现有私有方法）
                 if (individual.getCoverImagePath() == null || individual.getCoverImagePath().isBlank()) {
@@ -840,7 +911,7 @@ public class RecognitionService {
                         .identityId(algoResult.getIdentityId())
                         .message("识别成功")
                         .imagePath(toAccessibleUrl(savePath.toString()))
-                        .heatmapPath(toAccessibleUrl(heatmapPath))
+                        .heatmapPath(heatmapPath)  // 直接使用算法返回的热力图 URL
                         .recognitionTime(LocalDateTime.now())
                         .individualId(individual.getId())
                         .confidence(algoResult.getConfidence())
@@ -871,7 +942,7 @@ public class RecognitionService {
      * 返回与 recognizeByAlgorithm() 相同的 AlgorithmResult 类型，保持一致性。
      */
     private AlgorithmClientService.AlgorithmResult callAlgorithmWithWebClient(
-            byte[] fileBytes, String originalFilename, String contentType) {
+            byte[] fileBytes, String originalFilename, String contentType, Long recordId) {
         try {
             // 用 ByteArrayResource 包装已读取的字节，并覆盖 getFilename() 传递原始文件名
             ByteArrayResource resource = new ByteArrayResource(fileBytes) {
@@ -902,18 +973,27 @@ public class RecognitionService {
             var resultBuilder = AlgorithmClientService.AlgorithmResult.builder()
                     .identityId(String.valueOf(raw.identityId))
                     .confidence(raw.confidence)
-                    .heatmapBase64(raw.heatmapBase64);
+                    .heatmapBase64(null)  // 算法现在返回 URL，不再需要 Base64
+                    .heatmapUrl(raw.heatmapUrl);  // 设置热力图 URL
             
-            // 新增：如果算法返回了相关图片和详细报告，也传递下去
-            if (raw.relatedImages != null && !raw.relatedImages.isEmpty()) {
-                resultBuilder.relatedImages(raw.relatedImages.stream()
-                    .map(rawImg -> AlgorithmClientService.AlgorithmResult.RelatedImageInfo.builder()
-                        .imageId(rawImg.imageId)
-                        .imagePath(rawImg.imagePath)
-                        .shotTime(rawImg.shotTime)
-                        .recordId(rawImg.recordId)
-                        .build())
-                    .collect(Collectors.toList()));
+            // 处理算法返回的 gallery_images，直接使用 URL
+            if (raw.galleryImages != null && !raw.galleryImages.isEmpty()) {
+                List<AlgorithmClientService.AlgorithmResult.RelatedImageInfo> mappedImages = new ArrayList<>();
+                for (var galleryImg : raw.galleryImages) {
+                    // 拼接完整 URL：基础地址 + image_url
+                    String fullImageUrl = galleryImg.imageUrl;
+                    if (fullImageUrl != null && !fullImageUrl.startsWith("http")) {
+                        // 如果是相对路径，拼接基础地址
+                        String baseUrl = algorithmUrl.replace("/predict", "").replace("/predict_batch", "");
+                        fullImageUrl = baseUrl + galleryImg.imageUrl;
+                    }
+                    
+                    mappedImages.add(AlgorithmClientService.AlgorithmResult.RelatedImageInfo.builder()
+                        .imagePath(fullImageUrl)  // 直接使用算法返回的 URL
+                        .shotTime(galleryImg.date)
+                        .build());
+                }
+                resultBuilder.relatedImages(mappedImages);
             }
             if (raw.reportDetails != null) {
                 resultBuilder.reportDetails(raw.reportDetails);
@@ -926,42 +1006,43 @@ public class RecognitionService {
         }
     }
 
-    /** 算法接口响应的 JSON 结构（字段名与 Python FastAPI 保持一致） */
+    /** 算法接口响应的 JSON 结构（根据算法同学提供的最新文档） */
     private static class AlgorithmRawResponse {
         @JsonProperty("identity_id")
-        public Object identityId;      // 兼容数字或字符串
+        public Object identityId;
 
         @JsonProperty("confidence")
         public Double confidence;
 
-        @JsonProperty("heatmap_base64")
-        public String heatmapBase64;   // 可为 null
+        @JsonProperty("heatmap_url")
+        public String heatmapUrl;  // 算法返回热力图 URL，不再是 Base64
         
-        /** 新增：同一个体的多张历史图片（算法返回） */
-        @JsonProperty("related_images")
-        public List<RelatedImageInfo> relatedImages;
+        /** 算法返回的历史样本列表（单张接口） */
+        @JsonProperty("gallery_images")
+        public List<GalleryImage> galleryImages;
         
-        /** 新增：详细识别报告文字内容 */
+        /** 批量接口返回的结果数组包装 */
+        @JsonProperty("results")
+        public List<AlgorithmRawResponse> results;
+        
+        /** 新增：详细识别报告文字内容（如果算法支持） */
         @JsonProperty("report_details")
         public String reportDetails;
         
-        /** 内部类：算法返回的图片信息 */
+        /** 内部类：算法返回的历史图片信息 */
         @lombok.Data
         @lombok.NoArgsConstructor
         @lombok.AllArgsConstructor
         @lombok.Builder
-        public static class RelatedImageInfo {
-            @JsonProperty("image_id")
-            private Long imageId;
+        public static class GalleryImage {
+            @JsonProperty("year")
+            public String year;
             
-            @JsonProperty("image_path")
-            private String imagePath;
+            @JsonProperty("date")
+            public String date; // 对应我们的 shotTime
             
-            @JsonProperty("shot_time")
-            private String shotTime;  // 算法可能返回字符串格式的日期
-            
-            @JsonProperty("record_id")
-            private Long recordId;
+            @JsonProperty("image_url")
+            public String imageUrl; // 算法返回的是 URL，直接使用
         }
     }
 }

@@ -9,6 +9,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import reactor.netty.http.client.HttpClient;
@@ -57,13 +58,21 @@ public class WebConfig implements WebMvcConfigurer {
 
     /**
      * 算法服务用的 WebClient：连接与响应超时 30 秒，供 AlgorithmClientService 调用推理接口。
+     * 增加了内存缓冲区限制到 50MB，以支持算法返回包含 Base64 图片的大响应。
      */
     @Bean
     public WebClient webClient() {
         HttpClient httpClient = HttpClient.create()
                 .responseTimeout(Duration.ofSeconds(30));
+        
+        // 设置内存缓冲区大小为 50MB (默认是 256KB)
+        ExchangeStrategies strategies = ExchangeStrategies.builder()
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(50 * 1024 * 1024))
+                .build();
+        
         return WebClient.builder()
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .exchangeStrategies(strategies)
                 .build();
     }
 
