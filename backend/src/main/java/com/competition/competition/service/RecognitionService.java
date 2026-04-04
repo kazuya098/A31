@@ -27,12 +27,20 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.time.Duration;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.MultipartBodyBuilder;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.WebClient;
 
 @Slf4j
 @Service
@@ -44,6 +52,7 @@ public class RecognitionService {
     private final IndividualImageMapper individualImageMapper;
     private final UserMapper userMapper;
     private final AlgorithmClientService algorithmClient;
+    private final WebClient webClient;
 
     @Value("${upload.path:./uploads}")
     private String uploadPath;
@@ -591,5 +600,194 @@ public class RecognitionService {
         }
 
         return null;
+    }
+
+    // ==================== 批量上传 ====================
+
+    /**
+     * 批量上传：逐张调算法、落库，单张失败不影响其余张。
+     * shotTimes[i] / imageIds[i] 与 files[i] 按下标对应，由 Controller 传入。
+     */
+    public List<RecognitionResultDto> submitBatch(
+            MultipartFile[] files,
+            String type,
+            Long operatorId,
+            String[] imageIds,
+            String[] shotTimes) {
+
+        List<BatchImageMetadata> metaList = new ArrayList<>();
+        for (int i = 0; i < files.length; i++) {
+            BatchImageMetadata m = new BatchImageMetadata();
+            m.setImageId(imageIds != null && i < imageIds.length ? imageIds[i] : null);
+            if (shotTimes != null && i < shotTimes.length && shotTimes[i] != null) {
+                try { m.setShotTime(LocalDate.parse(shotTimes[i])); } catch (Exception ignored) {}
+            }
+            metaList.add(m);
+        }
+
+        List<RecognitionResultDto> results = new ArrayList<>();
+
+        for (int i = 0; i < files.length; i++) {
+            MultipartFile file = files[i];
+            BatchImageMetadata meta = (i < metaList.size()) ? metaList.get(i) : new BatchImageMetadata();
+
+            // 立即读字节，防止临时文件被清理（与 submit() 相同策略）
+            byte[] fileBytes;
+            String originalFilename;
+            String contentType;
+            try {
+                fileBytes = file.getBytes();
+                originalFilename = file.getOriginalFilename();
+                contentType = file.getContentType();
+            } catch (IOException e) {
+                log.error("Batch item {} read failed: {}", meta.getImageId(), e.getMessage());
+                results.add(RecognitionResultDto.builder()
+                        .status("failed").message("文件读取失败").build());
+                continue;
+            }
+
+            String ext = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                ext = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
+            String savedFileName = UUID.randomUUID().toString().replace("-", "") + ext;
+            Path savePath = Paths.get(uploadPath).resolve(savedFileName);
+
+            try {
+                Files.createDirectories(savePath.getParent());
+                Files.write(savePath, fileBytes);
+            } catch (IOException e) {
+                log.error("Batch item {} save failed: {}", meta.getImageId(), e.getMessage());
+                results.add(RecognitionResultDto.builder()
+                        .status("failed").message("文件保存失败").build());
+                continue;
+            }
+
+            // 插 recognition_record，status='pending'
+            RecognitionRecord record = new RecognitionRecord();
+            record.setUserId(operatorId);
+            record.setImagePath(savePath.toString());
+            record.setStatus("pending");
+            record.setType(type);
+            record.setOperationStatus("正常");
+            recordMapper.insert(record);
+
+            try {
+                // 用 WebClient 调算法（使用内存中的字节，不依赖临时文件）
+                AlgorithmClientService.AlgorithmResult algoResult =
+                        callAlgorithmWithWebClient(fileBytes, originalFilename, contentType);
+
+                if (algoResult == null) {
+                    throw new RuntimeException("算法服务无响应");
+                }
+
+                // 保存 heatmap（复用现有私有方法）
+                String heatmapPath = saveHeatmapBase64(algoResult.getHeatmapBase64(), record.getId());
+
+                //  查重 / 新建 individual（复用现有私有方法）
+                Individual individual = findOrCreateIndividual(
+                        algoResult.getIdentityId(), type, savePath.toString());
+
+                //  更新 recognition_record 为 done
+                recordMapper.updateResultAndIndividual(
+                        record.getId(), "done", algoResult.getIdentityId(),
+                        algoResult.getConfidence(), individual.getId(), heatmapPath);
+
+                //  插 individual_image，shot_time 取前端传入值（而非 LocalDate.now()）
+                IndividualImage img = new IndividualImage();
+                img.setIndividualId(individual.getId());
+                img.setImagePath(savePath.toString());
+                img.setShotTime(meta.getShotTime() != null ? meta.getShotTime() : LocalDate.now());
+                img.setRecognitionRecordId(record.getId());
+                individualImageMapper.insert(img);
+
+                // 更新封面（复用现有私有方法）
+                if (individual.getCoverImagePath() == null || individual.getCoverImagePath().isBlank()) {
+                    updateIndividualCover(individual.getId(), savePath.toString());
+                }
+
+                results.add(RecognitionResultDto.builder()
+                        .taskId(String.valueOf(record.getId()))
+                        .status("done")
+                        .identityId(algoResult.getIdentityId())
+                        .message("识别成功")
+                        .imagePath(toAccessibleUrl(savePath.toString()))
+                        .heatmapPath(toAccessibleUrl(heatmapPath))
+                        .recognitionTime(LocalDateTime.now())
+                        .individualId(individual.getId())
+                        .confidence(algoResult.getConfidence())
+                        .build());
+
+            } catch (Exception e) {
+                // 单张失败：标记 failed，继续处理下一张
+                recordMapper.updateResultAndIndividual(
+                        record.getId(), "failed", null, null, null, null);
+                log.error("Batch item {} failed: {}", meta.getImageId(), e.getMessage());
+                results.add(RecognitionResultDto.builder()
+                        .taskId(String.valueOf(record.getId()))
+                        .status("failed")
+                        .message("识别失败: " + e.getMessage())
+                        .imagePath(toAccessibleUrl(savePath.toString()))
+                        .recognitionTime(LocalDateTime.now())
+                        .build());
+            }
+        }
+        return results;
+    }
+
+    /**
+     * 用 WebClient 调算法，接收内存字节以避免临时文件过期问题。
+     * 返回与 recognizeByAlgorithm() 相同的 AlgorithmResult 类型，保持一致性。
+     */
+    private AlgorithmClientService.AlgorithmResult callAlgorithmWithWebClient(
+            byte[] fileBytes, String originalFilename, String contentType) {
+        try {
+            // 用 ByteArrayResource 包装已读取的字节，并覆盖 getFilename() 传递原始文件名
+            ByteArrayResource resource = new ByteArrayResource(fileBytes) {
+                @Override
+                public String getFilename() {
+                    return originalFilename != null ? originalFilename : "image.jpg";
+                }
+            };
+
+            MultipartBodyBuilder builder = new MultipartBodyBuilder();
+            builder.part("file", resource)
+                   .contentType(MediaType.parseMediaType(
+                           contentType != null ? contentType : "image/jpeg"));
+
+            AlgorithmRawResponse raw = webClient.post()
+                    .uri(algorithmUrl)
+                    .header("ngrok-skip-browser-warning", "true")
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .body(BodyInserters.fromMultipartData(builder.build()))
+                    .retrieve()
+                    .bodyToMono(AlgorithmRawResponse.class)
+                    .block(Duration.ofSeconds(timeoutSeconds));
+
+            if (raw == null || raw.identityId == null) {
+                return null;
+            }
+
+            return AlgorithmClientService.AlgorithmResult.builder()
+                    .identityId(String.valueOf(raw.identityId))
+                    .confidence(raw.confidence)
+                    .heatmapBase64(raw.heatmapBase64)
+                    .build();
+        } catch (Exception e) {
+            log.warn("WebClient algorithm call failed: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /** 算法接口响应的 JSON 结构（字段名与 Python FastAPI 保持一致） */
+    private static class AlgorithmRawResponse {
+        @JsonProperty("identity_id")
+        public Object identityId;      // 兼容数字或字符串
+
+        @JsonProperty("confidence")
+        public Double confidence;
+
+        @JsonProperty("heatmap_base64")
+        public String heatmapBase64;   // 可为 null
     }
 }

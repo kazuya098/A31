@@ -69,6 +69,11 @@
             <artifactId>mybatis-spring-boot-starter</artifactId>
             <version>4.0.1</version>
         </dependency>
+        <!-- Jackson Databind：ObjectMapper / TypeReference，用于批量接口解析 metadataJson -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.projectlombok</groupId>

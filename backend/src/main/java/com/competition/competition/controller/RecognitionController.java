@@ -26,6 +26,26 @@ public class RecognitionController {
 
     private final RecognitionService recognitionService;
 
+    /** 批量上传识别：files[] + imageIds[] + shotTimes[]，按下标一一对应 */
+    @PostMapping(value = "/batch-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Result<List<RecognitionResultDto>> batchUpload(
+            @RequestParam("files") MultipartFile[] files,
+            @RequestParam(value = "type", defaultValue = "human") String type,
+            @RequestParam(value = "imageIds", required = false) String[] imageIds,
+            @RequestParam(value = "shotTimes", required = false) String[] shotTimes,
+            HttpServletRequest request) throws IOException {
+        if (files == null || files.length == 0) {
+            return Result.fail(ResultCode.BAD_REQUEST, "请选择至少一张图片");
+        }
+        if (files.length > 10) {
+            return Result.fail(ResultCode.BAD_REQUEST, "每次最多上传 10 张图片");
+        }
+        Long operatorId = (Long) request.getAttribute("currentUserId");
+        List<RecognitionResultDto> results =
+                recognitionService.submitBatch(files, type, operatorId, imageIds, shotTimes);
+        return Result.ok(results);
+    }
+
     /** 上传识别：type=human|non_human，可选；操作者从登录态取 */
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Result<RecognitionResultDto> upload(
