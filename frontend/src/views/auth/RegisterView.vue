@@ -107,7 +107,7 @@ const submitForm = () => {
           username: registerForm.username,
           password: registerForm.password,
         });
-        localStorage.setItem('X-Auth-Token', response.token);
+        localStorage.setItem('token', response.token);
         ElMessage.success('注册成功');
         router.push('/');
       } catch (error) {

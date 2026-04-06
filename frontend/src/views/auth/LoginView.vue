@@ -80,7 +80,7 @@ const submitForm = () => {
     if (valid) {
       try {
         const response = await authLogin(loginForm);
-        localStorage.setItem('X-Auth-Token', response.token);
+        localStorage.setItem('token', response.token);
         ElMessage.success('登录成功');
         router.push('/');
       } catch (error) {

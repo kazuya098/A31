@@ -33,8 +33,10 @@
               </button>
               
               <div class="flex items-center gap-2 text-gray-400">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                <span class="text-sm font-bold tracking-widest uppercase italic">System Real-time Monitoring</span>
+                <span :class="['w-1.5 h-1.5 rounded-full', systemStatus === 'up' ? 'bg-emerald-500 animate-ping' : 'bg-red-500']"></span>
+                <span class="text-sm font-bold tracking-widest uppercase italic">
+                  {{ systemStatus === 'up' ? 'System Real-time Monitoring' : 'Service Connection Lost' }}
+                </span>
               </div>
             </div>
           </header>
@@ -150,6 +152,7 @@
 import { shallowRef, ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { getRecognitionRecords } from '@/services/modules/recognition.js';
+import { getHealth } from '@/services/modules/system.js';
 import * as echarts from 'echarts';
 import {
   Monitor,
@@ -168,6 +171,24 @@ import AccuracyPolarChart from './AccuracyPolarChart.vue';
 const router = useRouter();
 const goToUpload = () => router.push('/upload');
 const goToRecords = () => router.push('/records');
+
+const systemStatus = ref('up');
+
+const checkHealth = async () => {
+  try {
+    const res = await getHealth();
+    const data = res?.data || res;
+    // 兼容后端返回结构 { code, data: { status } } 或直接返回 { status }
+    if (data.status === 'up' || data.data?.status === 'up') {
+      systemStatus.value = 'up';
+    } else {
+      systemStatus.value = 'down';
+    }
+  } catch (error) {
+    systemStatus.value = 'down';
+    console.error('System health check failed:', error);
+  }
+};
 
 const startButton = ref(null);
 const glowStyle = ref({});
@@ -218,10 +239,11 @@ const fetchRecentRecords = async () => {
 const toAbsoluteUrl = (maybePath) => {
   if (!maybePath) return null;
   if (/^https?:\/\//i.test(maybePath)) return maybePath;
-  const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
-  const origin = apiBase.replace(/\/api\/?$/, '');
-  if (maybePath.startsWith('/')) return origin + maybePath;
-  return origin + '/' + maybePath;
+  
+  // 拼接代理路径
+  const base = import.meta.env.VITE_API_BASE_URL || '/api';
+  const path = maybePath.startsWith('/') ? maybePath : '/' + maybePath;
+  return base + path;
 };
 
 const formatRelativeTime = (isoStr) => {
@@ -258,6 +280,7 @@ const accuracyData = ref([
 
 onMounted(() => {
   fetchRecentRecords();
+  checkHealth();
   if (startButton.value) {
     startButton.value.addEventListener('mousemove', handleMouseMove);
     startButton.value.addEventListener('mouseleave', handleMouseLeave);

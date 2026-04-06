@@ -360,16 +360,18 @@ const handleDrop = (e) => {
 };
 
 const backendOrigin = computed(() => {
-  const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
-  // e.g. http://localhost:8080/api -> http://localhost:8080
-  return apiBase.replace(/\/api\/?$/, '');
+  // 强制使用环境变量，不给它回退到 localhost 的机会
+  return import.meta.env.VITE_API_BASE_URL || '/api';
 });
 
 const toAbsoluteUrl = (maybePath) => {
   if (!maybePath) return null;
   if (/^https?:\/\//i.test(maybePath)) return maybePath;
-  if (maybePath.startsWith('/')) return backendOrigin.value + maybePath;
-  return backendOrigin.value + '/' + maybePath;
+  
+  // 拼接代理路径
+  const base = backendOrigin.value; 
+  const path = maybePath.startsWith('/') ? maybePath : '/' + maybePath;
+  return base + path;
 };
 
 const startProcess = async (file) => {

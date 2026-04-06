@@ -10,6 +10,17 @@ export default defineConfig({
     vue(),
     vueDevTools(),
   ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://honouredly-supranatural-drucilla.ngrok-free.dev',
+        changeOrigin: true,
+        headers: {
+          "ngrok-skip-browser-warning": "69420" // 强制跳过 ngrok 警告页
+        }
+      }
+    }
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

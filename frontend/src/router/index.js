@@ -97,12 +97,31 @@ const router = createRouter({
 
 // router.beforeEach((to, from, next) => {
 //   document.title = to.meta.title ? `${to.meta.title} - 跨时域生物识别系统` : '跨时域生物识别系统';
-//   const token = localStorage.getItem('X-Auth-Token');
+//   const token = localStorage.getItem('token');
 //   if (to.meta.requiresAuth && !token) {
 //     next('/login');
 //   } else {
 //     next();
 //   }
 // });
+// src/router/index.js
+router.beforeEach((to, from) => {
+  const token = localStorage.getItem('token');
 
+  if (to.path === '/login' || to.path === '/register') {
+    // 已登录状态下去登录页，直接跳首页
+    if (token) {
+      return '/';
+    } else {
+      return true;
+    }
+  } else {
+    // 访问受保护页面（如设置、首页）
+    if (!token) {
+      return '/login'; // 没钥匙，踢回登录
+    } else {
+      return true; // 有钥匙，放行
+    }
+  }
+});
 export default router;

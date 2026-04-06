@@ -447,7 +447,7 @@ const handleLogout = async () => {
   } catch (e) {
     // Ignore error, force redirect
   }
-  localStorage.removeItem('X-Auth-Token');
+  localStorage.removeItem('token');
   ElMessage.success('已退出登录');
   router.push('/login');
 };

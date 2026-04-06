@@ -72,25 +72,25 @@
 
             <div
               v-for="item in filteredIndividuals"
-              :key="item.individualId"
-              @click="selectIndividual(item.individualId)"
+              :key="item.id"
+              @click="selectIndividual(item.id)"
               :class="[
                 'individual-card',
-                selectedId === item.individualId ? 'individual-card--active' : ''
+                selectedId === item.id ? 'individual-card--active' : ''
               ]"
             >
               <div class="relative shrink-0">
                 <img
-                  :src="item.coverImagePath || '/examples/mandrill_1.jpg'"
+                  :src="item.coverImage || '/examples/mandrill_1.jpg'"
                   class="w-14 h-14 rounded-2xl object-cover bg-gray-100 shadow-sm"
                   @error="(e) => e.target.src = '/examples/mandrill_1.jpg'"
                 />
-                <div v-if="selectedId === item.individualId"
+                <div v-if="selectedId === item.id"
                   class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-orange-500 rounded-full border-2 border-white shadow-sm"></div>
               </div>
               <div class="flex-1 min-w-0">
                 <div class="flex justify-between items-baseline mb-0.5">
-                  <span class="text-sm font-bold text-gray-800 truncate">编号 #{{ item.individualId }}</span>
+                  <span class="text-sm font-bold text-gray-800 truncate">编号 #{{ item.id }}</span>
                   <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ml-2 shrink-0"
                     :class="item.speciesType === 'human' ? 'bg-blue-50 text-blue-500' : 'bg-emerald-50 text-emerald-600'">
                     {{ item.speciesType === 'human' ? '人类' : '非人类' }}
@@ -98,9 +98,9 @@
                 </div>
                 <div class="flex items-center gap-2 text-[11px] text-gray-400">
                   <el-icon class="shrink-0"><Picture /></el-icon>
-                  <span>{{ item.imageCount || 0 }} 张影像</span>
-                  <span v-if="item.latestShotTime" class="text-gray-300">·</span>
-                  <span v-if="item.latestShotTime">{{ formatShortDate(item.latestShotTime) }}</span>
+                  <span>{{ item.count || 0 }} 张影像</span>
+                  <span v-if="item.lastSeen" class="text-gray-300">·</span>
+                  <span v-if="item.lastSeen">{{ formatShortDate(item.lastSeen) }}</span>
                 </div>
               </div>
             </div>
@@ -258,15 +258,15 @@ const submitFileInput = ref(null);
 
 // ─── Computed ────────────────────────────────────────────
 const filteredIndividuals = computed(() => {
-  if (!searchQuery.value) return individuals.value;
+  if (!searchQuery.value) return individuals.value || [];
   const q = searchQuery.value.toLowerCase();
-  return individuals.value.filter(item =>
-    String(item.individualId).includes(q)
+  return (individuals.value || []).filter(item =>
+    String(item.id).includes(q)
   );
 });
 
 const currentIndividual = computed(() =>
-  individuals.value.find(i => i.individualId === selectedId.value)
+  (individuals.value || []).find(i => i.id === selectedId.value)
 );
 
 // ─── Fetch individual list ────────────────────────────────
@@ -274,13 +274,33 @@ const fetchIndividuals = async () => {
   loading.value = true;
   try {
     const res = await getIndividuals();
-    const data = res?.data || res;
-    if (Array.isArray(data)) {
-      individuals.value = data;
+    // 调试辅助：在控制台查看原始数据结构
+    console.log('个体列表原始响应:', res);
+    
+    // 兼容取值逻辑:
+    // 1. 如果后端封装了请求层(拦截器已剥离response.data)，则res可能是 { code: 200, data: [...] }
+    // 2. 如果已剥离且 backend 直接返回 [ ... ]
+    const actualData = res?.data || (Array.isArray(res) ? res : []);
+    
+    if (Array.isArray(actualData)) {
+      individuals.value = actualData.map(item => ({
+        id: item.individualId || item.id,
+        coverImage: toAbsoluteUrl(item.coverImagePath || item.coverImage),
+        firstSeen: item.firstSeen,
+        lastSeen: item.lastSeen,
+        count: item.detectionCount || item.count || item.imageCount || 0,
+        speciesType: item.speciesType || 'non_human'
+      })).sort((a, b) => {
+        const db = b.lastSeen ? new Date(b.lastSeen) : 0;
+        const da = a.lastSeen ? new Date(a.lastSeen) : 0;
+        return db - da;
+      });
+    } else {
+      console.error('期望得到数组，但收到了:', actualData);
     }
   } catch (err) {
-    console.error('Failed to fetch individuals:', err);
-    ElMessage.error('个体列表加载失败');
+    console.error('获取个体列表失败:', err);
+    ElMessage.error('个体档案同步失败，请检查后端服务');
   } finally {
     loading.value = false;
   }
@@ -364,15 +384,18 @@ const handleSubmitFiles = async (e) => {
 
 // ─── URL helpers ──────────────────────────────────────────
 const backendOrigin = computed(() => {
-  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
-  return base.replace(/\/api\/?$/, '');
+  // 强制使用环境变量，不给它回退到 localhost 的机会
+  return import.meta.env.VITE_API_BASE_URL || '/api';
 });
 
-const toAbsoluteUrl = (p) => {
-  if (!p) return null;
-  if (/^https?:\/\//i.test(p)) return p;
-  if (p.startsWith('/')) return backendOrigin.value + p;
-  return backendOrigin.value + '/' + p;
+const toAbsoluteUrl = (maybePath) => {
+  if (!maybePath) return null;
+  if (/^https?:\/\//i.test(maybePath)) return maybePath;
+  
+  // 拼接代理路径
+  const base = backendOrigin.value; 
+  const path = maybePath.startsWith('/') ? maybePath : '/' + maybePath;
+  return base + path;
 };
 
 // ─── Formatters ───────────────────────────────────────────

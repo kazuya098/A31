@@ -103,7 +103,7 @@ const logoutNavItem = {
 
 // 登出逻辑
 const logout = () => {
-  localStorage.removeItem('X-Auth-Token');
+  localStorage.removeItem('token');
   ElMessage.success('退出登录成功');
   router.push('/login');
 };
