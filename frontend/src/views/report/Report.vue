@@ -1,14 +1,24 @@
 <template>
   <div class="report-outer-wrapper py-10 bg-gray-100 min-h-screen" v-loading="loading">
-    <!-- 3. 添加一个按钮“下载PDF” -->
-    <!-- 修改为悬浮在报告外的右侧 -->
-    <div v-if="reportData" class="fixed right-10 top-1/2 -translate-y-1/2 z-50">
-      <el-button 
-        type="primary" 
-        size="large" 
-        @click="downloadPDF" 
-        :loading="downloading" 
-        class="download-btn-fixed shadow-2xl flex flex-col items-center justify-center h-24 w-24 rounded-2xl hover:scale-110 transition-transform bg-blue-600 border-none"
+    <!-- Exit Report button — top left -->
+    <div class="fixed left-6 top-6 z-50">
+      <el-button
+        size="large"
+        @click="goBack"
+        class="exit-btn-fixed shadow-lg flex items-center gap-2 rounded-2xl border-none"
+      >
+        <el-icon :size="20"><ArrowLeft /></el-icon>
+        <span class="text-sm font-bold">退出报告</span>
+      </el-button>
+    </div>
+
+    <!-- Download PDF button — right side -->
+    <div v-if="reportData" class="fixed right-10 z-50" style="top: 50%; transform: translateY(-50%)">
+      <el-button
+        size="large"
+        @click="downloadPDF"
+        :loading="downloading"
+        class="download-btn-fixed shadow-2xl flex flex-col items-center justify-center h-24 w-24 rounded-2xl hover:scale-110 transition-transform border-none"
       >
         <el-icon :size="28" class="mb-1"><Download /></el-icon>
         <span class="text-xs font-bold">下载报告</span>
@@ -17,7 +27,7 @@
 
     <!-- 2. 给最外层容器绑定 ref="reportRef" -->
     <div v-if="reportData" class="report-pdf-area shadow-sm" ref="reportRef">
-      <!-- 6. 增加一个“报告头部”（标题+时间） -->
+      <!-- 6. 增加一个"报告头部"（标题+时间） -->
       <header class="report-header flex justify-between items-end">
         <div class="header-left">
           <h1 class="report-title text-gray-900">识别报告</h1>
@@ -117,15 +127,17 @@
 
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import api from '@/services/api';
-import { Download } from '@element-plus/icons-vue';
+import { Download, ArrowLeft } from '@element-plus/icons-vue';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { ElMessage } from 'element-plus';
 
 const reportRef = ref(null);
 const route = useRoute();
+const router = useRouter();
+const goBack = () => router.push('/records');
 const loading = ref(false);
 const downloading = ref(false);
 const reportData = ref(null);
@@ -327,4 +339,32 @@ const currentDateTime = computed(() => {
     min-height: auto;
   }
 }
-</style>
+
+/* Exit button */
+.exit-btn-fixed {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  color: #374151;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.exit-btn-fixed:hover {
+  background: #f3f4f6;
+  transform: translateX(-2px);
+}
+
+/* Download button — green gradient, white text */
+.download-btn-fixed {
+  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
+  color: #ffffff !important;
+}
+
+.download-btn-fixed:hover {
+  background: linear-gradient(135deg, #16a34a, #15803d) !important;
+  color: #ffffff !important;
+}
+
+.download-btn-fixed :deep(.el-icon),
+.download-btn-fixed :deep(span) {
+  color: #ffffff !important;
+}</style>

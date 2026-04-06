@@ -21,5 +21,8 @@ public interface IndividualMapper {
 
     List<Individual> listBySpeciesType(String speciesType);
 
+    /** 不按物种类型过滤，返回全部个体 */
+    List<Individual> listAll();
+
     int updateCover(@Param("id") Long id, @Param("coverImagePath") String coverImagePath);
 }

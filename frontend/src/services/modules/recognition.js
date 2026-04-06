@@ -37,6 +37,14 @@ export function getRecordReport(id) {
   });
 }
 
+export function getIndividuals(params) {
+  return service({
+    url: '/recognition/individuals',
+    method: 'get',
+    params,
+  });
+}
+
 export function getIndividualReport(individualId) {
   return service({
     url: `/recognition/individuals/${individualId}/report`,

@@ -11,13 +11,6 @@
         <h1 class="text-3xl font-light tracking-tight text-gray-900 mb-1">
           上传识别 <span class="font-semibold text-orange-600">分析中心</span>
         </h1>
-        <p class="text-gray-500 text-sm">利用跨时域 AI 算法进行特征索引与生物个体建模</p>
-      </div>
-      <div class="flex items-center space-x-6">
-        <el-radio-group v-model="recognitionType" class="custom-radio-group">
-          <el-radio-button label="human">人类识别</el-radio-button>
-          <el-radio-button label="non_human">非人识别</el-radio-button>
-        </el-radio-group>
       </div>
     </header>
 
@@ -64,7 +57,7 @@
                 >
                   <el-icon class="mr-2"><Plus /></el-icon> 选择图像文件
                 </el-button>
-                <input type="file" ref="fileInput" class="hidden" accept="image/*" multiple @change="handleFileChange">
+                <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="handleFileChange">
               </div>
 
               <div class="mt-12 flex items-center gap-8 opacity-40">
@@ -157,8 +150,8 @@
                    <div v-if="showHeatmap" class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-transparent via-orange-400 to-transparent shadow-[0_0_30px_rgba(251,146,60,1)] animate-scan-faster z-20"></div>
 
                    <div class="absolute bottom-6 left-6 flex gap-3 z-30">
-                      <span class="px-3 py-1 bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg text-[10px] font-mono">LAT: 39.9042° N</span>
-                      <span class="px-3 py-1 bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg text-[10px] font-mono">LNG: 116.4074° E</span>
+                      <span class="px-3 py-1 bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg text-[10px] font-mono">纬度: 30.5728° N</span>
+                      <span class="px-3 py-1 bg-black/40 backdrop-blur-md border border-white/20 text-white rounded-lg text-[10px] font-mono">经度: 104.0668° E</span>
                    </div>
                 </div>
 
@@ -171,7 +164,7 @@
               <!-- Summary Info Card -->
               <div class="col-span-4 flex flex-col gap-4 min-h-0">
                  <div class="bg-gradient-to-br from-orange-500 to-red-600 rounded-[3rem] p-6 text-white shadow-premium flex flex-col shrink-0">
-                    <p class="text-[9px] font-black uppercase tracking-[0.2em] opacity-70 mb-1">Confidence Level</p>
+                    <p class="text-[9px] font-black uppercase tracking-[0.2em] opacity-70 mb-1">置信度</p>
                     <div class="flex items-baseline gap-2 mb-3">
                        <span class="text-6xl font-black tracking-tighter">{{ (result.confidence * 100).toFixed(0) }}</span>
                        <span class="text-xl font-bold">%</span>
@@ -186,7 +179,7 @@
  
                  <div class="flex-1 glass-panel border border-white/50 rounded-[3rem] p-6 shadow-premium flex flex-col gap-4 overflow-hidden">
                     <div class="flex flex-col gap-0.5">
-                       <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Recognized Identity</p>
+                       <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">个体编号</p>
                        <h4 class="text-3xl font-black text-gray-900 italic">ID#{{ result.individualId }}</h4>
                     </div>
 
@@ -194,15 +187,15 @@
                       <div class="flex items-center gap-4">
                          <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-500"><el-icon><Calendar /></el-icon></div>
                          <div class="flex-1">
-                            <p class="text-[10px] text-gray-400 font-bold uppercase">Record Time</p>
-                            <p class="text-sm font-bold text-gray-700">2026-03-23 22:15</p>
+                            <p class="text-[10px] text-gray-400 font-bold uppercase">目击时间</p>
+                            <p class="text-sm font-bold text-gray-700">{{ result.shotTime || new Date().toLocaleString('zh-CN') }}</p>
                          </div>
                       </div>
                       <div class="flex items-center gap-4">
                          <div class="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-500"><el-icon><Location /></el-icon></div>
                          <div class="flex-1">
-                            <p class="text-[10px] text-gray-400 font-bold uppercase">Target Location</p>
-                            <p class="text-sm font-bold text-gray-700">Zone-A / Perimeter 4</p>
+                            <p class="text-[10px] text-gray-400 font-bold uppercase">目击地点</p>
+                            <p class="text-sm font-bold text-gray-700">四川省成都市</p>
                          </div>
                       </div>
                    </div>
@@ -288,20 +281,19 @@ import {
   InfoFilled
 } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
-import { uploadImage, batchUploadImages, getIndividualReport } from '@/services/modules/recognition.js';
+import { uploadImage, getIndividualReport } from '@/services/modules/recognition.js';
 
 const router = useRouter();
 
 // Config
 const steps = ['载入影像', '特征提取', '数据库比对', '个体索引', '报告生成'];
 const history = ref([
-  { individualId: 1024, taskId: 'TASK-XW290-A', confidence: 0.98, imageUrl: 'https://picsum.photos/seed/h1/200/200' },
-  { individualId: 1056, taskId: 'TASK-KJ112-B', confidence: 0.85, imageUrl: 'https://picsum.photos/seed/h2/200/200' },
-  { individualId: 1102, taskId: 'TASK-ZZ003-C', confidence: 0.92, imageUrl: 'https://picsum.photos/seed/h3/200/200' },
+  { individualId: 1024, taskId: 'TASK-XW290-A', confidence: 0.98, imageUrl: '/examples/mandrill_1.jpg' },
+  { individualId: 1056, taskId: 'TASK-KJ112-B', confidence: 0.85, imageUrl: '/examples/mandrill_2.jpg' },
+  { individualId: 1102, taskId: 'TASK-ZZ003-C', confidence: 0.92, imageUrl: '/examples/mandrill_3.jpg' },
 ]);
 
 // State
-const recognitionType = ref('human');
 const dragOver = ref(false);
 const status = ref('idle'); // idle, uploading, processing, completed
 const progress = ref(0);
@@ -329,11 +321,7 @@ const openFileDialog = () => {
 const handleFileChange = (e) => {
   const files = Array.from(e.target.files);
   if (files.length > 0) {
-    if (files.length === 1) {
-      startProcess(files[0]);
-    } else {
-      startBatchProcess(files);
-    }
+    startProcess(files[0]);
   }
 };
 
@@ -341,11 +329,7 @@ const handleDrop = (e) => {
   dragOver.value = false;
   const files = Array.from(e.dataTransfer.files);
   if (files.length > 0) {
-    if (files.length === 1) {
-      startProcess(files[0]);
-    } else {
-      startBatchProcess(files);
-    }
+    startProcess(files[0]);
   }
 };
 
@@ -374,7 +358,7 @@ const startProcess = async (file) => {
   try {
     const form = new FormData();
     form.append('file', file);
-    form.append('type', recognitionType.value);
+    form.append('type', 'non_human');
 
     const res = await uploadImage(form);
     const data = res?.data || res;

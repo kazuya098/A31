@@ -35,6 +35,12 @@
         ORDER BY id
     </select>
 
+    <select id="listAll" resultMap="BaseResultMap">
+        SELECT id, species_type, algorithm_identity_id, cover_image_path, created_at, updated_at
+        FROM individual
+        ORDER BY id DESC
+    </select>
+
     <update id="updateCover">
         UPDATE individual
         SET cover_image_path = #{coverImagePath}, updated_at = NOW()

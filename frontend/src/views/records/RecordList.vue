@@ -27,8 +27,7 @@
           <el-select v-model="filters.type" placeholder="识别类型" clearable class="!w-40">
             <el-option label="全部类型" value="" />
             <el-option label="人类识别" value="human" />
-            <el-option label="动物识别" value="animal" />
-            <el-option label="车辆识别" value="vehicle" />
+            <el-option label="非人类识别" value="non_human" />
           </el-select>
 
           <!-- 日期范围 -->
@@ -53,7 +52,6 @@
             <span class="relative z-10 flex items-center justify-center">
               <el-icon class="mr-1"><Search /></el-icon>
               <span>搜索</span>
-              <span class="absolute -bottom-1 left-0 w-full h-0.5 bg-transparent transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out origin-left"></span>
             </span>
           </button>
 
@@ -86,20 +84,15 @@
           :row-class-name="recordRowClassName"
           empty-text="暂无识别记录"
           stripe
+          align="center"
         >
-          <el-table-column prop="id" label="ID" width="80">
+          <el-table-column prop="id" label="ID" width="80" align="center">
             <template #default="scope">
               <span class="text-gray-400 font-mono text-xs">#{{ scope.row.id }}</span>
             </template>
           </el-table-column>
 
-          <el-table-column prop="taskId" label="任务ID" width="160">
-            <template #default="scope">
-              <span class="font-mono text-sm text-gray-700">{{ scope.row.taskId }}</span>
-            </template>
-          </el-table-column>
-
-          <el-table-column prop="type" label="识别类型" width="140">
+          <el-table-column prop="type" label="识别类型" width="160" align="center">
             <template #default="scope">
               <span :class="['px-3 py-1 rounded-full text-xs font-medium', getTypeTagClass(scope.row.type)]">
                 {{ getTypeLabel(scope.row.type) }}
@@ -107,65 +100,37 @@
             </template>
           </el-table-column>
 
-          <el-table-column prop="recognitionTime" label="识别时间" width="200">
+          <el-table-column prop="recognitionTime" label="识别时间" width="200" align="center">
             <template #default="scope">
-              <div class="flex items-center text-gray-600 text-sm">
+              <div class="flex items-center justify-center text-gray-600 text-sm">
                 <el-icon class="mr-1.5 text-gray-400"><Clock /></el-icon>
                 {{ formatTime(scope.row.recognitionTime) }}
               </div>
             </template>
           </el-table-column>
 
-          <el-table-column prop="operator" label="操作员" width="140">
+          <el-table-column prop="operatorName" label="操作员" width="160" align="center">
             <template #default="scope">
-              <div class="flex items-center">
+              <div class="flex items-center justify-center">
                 <div class="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center mr-2">
                   <el-icon class="text-orange-500 w-3.5 h-3.5"><User /></el-icon>
                 </div>
-                <span class="text-gray-800 font-medium text-sm">{{ scope.row.operator }}</span>
+                <span class="text-gray-800 font-medium text-sm">{{ scope.row.operatorName || '-' }}</span>
               </div>
             </template>
           </el-table-column>
 
-          <el-table-column prop="result" label="识别结果" min-width="160">
+          <el-table-column prop="recognitionResult" label="识别结果" align="center">
             <template #default="scope">
-              <div class="flex items-center">
-                <div :class="['w-2 h-2 rounded-full mr-2', scope.row.result.includes('成功') ? 'bg-emerald-500' : 'bg-red-500']"></div>
-                <span :class="scope.row.result.includes('成功') ? 'text-emerald-700' : 'text-red-600'" class="font-medium text-sm">
-                  {{ scope.row.result }}
+              <div class="flex items-center justify-center">
+                <div :class="['w-2 h-2 rounded-full mr-2 shrink-0', scope.row.status === 'done' ? 'bg-emerald-500' : 'bg-red-500']"></div>
+                <span v-if="scope.row.status === 'done'" class="font-medium text-sm text-emerald-700">
+                  {{ scope.row.recognitionResult || '-' }}
+                  <span v-if="scope.row.confidence != null" class="ml-1 text-orange-600">
+                    {{ (scope.row.confidence * 100).toFixed(1) }}%
+                  </span>
                 </span>
-              </div>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="操作" width="180" align="center">
-            <template #default="scope">
-              <div class="flex items-center justify-center gap-2">
-                <el-button 
-                  type="primary" 
-                  link 
-                  size="small" 
-                  @click="router.push(`/report/${scope.row.id}`)"
-                  class="!text-orange-600 hover:!text-orange-700"
-                >
-                  <el-icon class="mr-1"><Document /></el-icon>报告
-                </el-button>
-                
-                <el-dropdown trigger="click" @command="(cmd) => handleDropdownCommand(cmd, scope.row)">
-                  <button class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors">
-                    <el-icon><MoreFilled /></el-icon>
-                  </button>
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item command="report">
-                        <el-icon class="mr-1"><Document /></el-icon>查看报告
-                      </el-dropdown-item>
-                      <el-dropdown-item command="delete" class="!text-red-500">
-                        <el-icon class="mr-1"><Delete /></el-icon>删除
-                      </el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
+                <span v-else class="font-medium text-sm text-red-600">识别失败</span>
               </div>
             </template>
           </el-table-column>
@@ -192,9 +157,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Search, Refresh, Clock, User, MoreFilled, Delete, Document } from '@element-plus/icons-vue';
+import { Search, Refresh, Clock, User } from '@element-plus/icons-vue';
 import { getRecognitionRecords } from '@/services/modules/recognition.js';
-import { ElMessageBox, ElMessage } from 'element-plus';
 
 const router = useRouter();
 
@@ -228,8 +192,7 @@ const handleSearchMouseLeave = () => { searchGlowStyle.value = {}; };
 const getTypeTagClass = (type) => {
   const map = {
     human: 'bg-orange-100 text-orange-700',
-    animal: 'bg-emerald-100 text-emerald-700',
-    vehicle: 'bg-blue-100 text-blue-700',
+    non_human: 'bg-emerald-100 text-emerald-700',
   };
   return map[type] || 'bg-gray-100 text-gray-700';
 };
@@ -237,8 +200,7 @@ const getTypeTagClass = (type) => {
 const getTypeLabel = (type) => {
   const map = {
     human: '人类识别',
-    animal: '动物识别',
-    vehicle: '车辆识别',
+    non_human: '非人类识别',
   };
   return map[type] || type;
 };
@@ -267,7 +229,8 @@ const fetchRecords = async () => {
     if (filters.value.type) params.type = filters.value.type;
     if (filters.value.dateRange && filters.value.dateRange.length === 2) {
       params.startTime = filters.value.dateRange[0];
-      params.endTime = filters.value.dateRange[1];
+      // Fix: set end-of-day so records created during the end day are included
+      params.endTime = filters.value.dateRange[1].replace('T00:00:00', 'T23:59:59');
     }
 
     const res = await getRecognitionRecords(params);
@@ -294,51 +257,23 @@ const resetFilters = () => {
 const handleSizeChange = () => { fetchRecords(); };
 const handlePageChange = () => { fetchRecords(); };
 
-// 下拉菜单命令
-const handleDropdownCommand = (command, row) => {
-  if (command === 'delete') {
-    handleDeleteRecord(row);
-  } else if (command === 'report') {
-    router.push(`/report/${row.id}`);
-  }
-};
-
-// 删除记录
-const handleDeleteRecord = async (row) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除记录 #${row.id}（${row.taskId}）吗？`,
-      '确认删除',
-      {
-        confirmButtonText: '删除',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }
-    );
-  } catch {
-    return;
-  }
-  records.value = records.value.filter(r => r.id !== row.id);
-  total.value = records.value.length;
-  ElMessage.success('记录已删除');
-};
-
-// Mock 数据
+// Mock 数据（与真实 API 字段保持一致）
 const generateMockData = () => {
-  const types = ['human', 'animal', 'vehicle'];
-  const operators = ['admin', 'operator01', 'operator02', 'supervisor', 'tech_lead'];
-  const results = ['识别成功', '识别成功', '识别成功', '识别失败 - 图像模糊', '识别成功', '识别失败 - 特征不足'];
+  const types = ['human', 'non_human'];
+  const operators = ['admin', 'operator01', 'operator02', 'supervisor'];
   const data = [];
 
   for (let i = 1; i <= 18; i++) {
     const date = new Date(2026, 2, 21 - Math.floor(i / 3), 8 + (i % 12), i * 3, 0);
+    const succeeded = i % 5 !== 0;
     data.push({
       id: i,
-      taskId: `task_${String(100000 + i * 137).slice(0, 6)}`,
       type: types[i % types.length],
       recognitionTime: date.toISOString().replace('Z', ''),
-      operator: operators[i % operators.length],
-      result: results[i % results.length],
+      operatorName: operators[i % operators.length],
+      recognitionResult: succeeded ? String(1000 + i) : null,
+      confidence: succeeded ? (0.7 + (i % 30) / 100) : null,
+      status: succeeded ? 'done' : 'failed',
     });
   }
   return data;
@@ -364,11 +299,12 @@ onMounted(() => {
 :deep(.custom-record-table .el-table__header th) {
   font-weight: 600;
   color: #6b7280;
-  font-size: 0.8rem;
+  font-size: 1.6rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   padding: 14px 0;
   border-bottom: 2px solid rgba(249, 115, 22, 0.15);
+  text-align: center;
 }
 
 :deep(.custom-record-table .el-table__body td) {

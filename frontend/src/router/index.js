@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import Layout from '../components/Layout.vue'; // 引入 Layout 组件
 import LoginView from '../views/auth/LoginView.vue'; // 引入 LoginView 组件
+import RegisterView from '../views/auth/RegisterView.vue'; // 引入 RegisterView 组件
 
 const routes = [
   {
@@ -9,6 +10,14 @@ const routes = [
     component: LoginView,
     meta: {
       title: '登录',
+    },
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: RegisterView,
+    meta: {
+      title: '注册',
     },
   },
   {

@@ -120,8 +120,8 @@ public class RecognitionService {
         record.setOperationStatus("正常"); // 设置默认操作状态
         recordMapper.insert(record);
 
-        // ====== 2. 调用算法服务进行识别（传递字节数组而不是 MultipartFile）======
-        AlgorithmClientService.AlgorithmResult algoResult = recognizeByAlgorithm(fileBytes, originalFilename, contentType, record.getId());
+        // ====== 2. 调用算法服务进行识别（使用 WebClient，支持 gallery_images 解析）======
+        AlgorithmClientService.AlgorithmResult algoResult = callAlgorithmWithWebClient(fileBytes, originalFilename, contentType, record.getId());
 
         if (algoResult != null) {
             // 识别成功
@@ -366,6 +366,8 @@ public class RecognitionService {
                     .operatorName(operatorName)
                     .operationStatus(r.getOperationStatus() != null ? r.getOperationStatus() : "正常")
                     .type(r.getType())
+                    .confidence(r.getConfidence())
+                    .status(r.getStatus())
                     .build();
         }).collect(Collectors.toList());
     }
@@ -491,15 +493,35 @@ public class RecognitionService {
     }
 
     public List<IndividualListDto> listIndividuals(String speciesType) {
-        String type = "human".equalsIgnoreCase(speciesType) ? "human" : "non_human";
-        List<Individual> indList = individualMapper.listBySpeciesType(type);
+        List<Individual> indList;
+        if (speciesType == null || speciesType.isBlank()) {
+            indList = individualMapper.listAll();
+        } else {
+            String type = "human".equalsIgnoreCase(speciesType) ? "human" : "non_human";
+            indList = individualMapper.listBySpeciesType(type);
+        }
         if (indList == null) indList = Collections.emptyList();
         return indList.stream()
-                .map(i -> IndividualListDto.builder()
-                        .individualId(i.getId())
-                        .coverImagePath(i.getCoverImagePath())
-                        .speciesType(i.getSpeciesType())
-                        .build())
+                .map(i -> {
+                    List<IndividualImage> images = individualImageMapper.listByIndividualIdOrderByShotTime(i.getId());
+                    int count = images != null ? images.size() : 0;
+                    LocalDate latestShotTime = null;
+                    if (images != null && !images.isEmpty()) {
+                        for (int idx = images.size() - 1; idx >= 0; idx--) {
+                            if (images.get(idx).getShotTime() != null) {
+                                latestShotTime = images.get(idx).getShotTime();
+                                break;
+                            }
+                        }
+                    }
+                    return IndividualListDto.builder()
+                            .individualId(i.getId())
+                            .coverImagePath(toAccessibleUrl(i.getCoverImagePath()))
+                            .speciesType(i.getSpeciesType())
+                            .imageCount(count)
+                            .latestShotTime(latestShotTime)
+                            .build();
+                })
                 .collect(Collectors.toList());
     }
 

@@ -18,12 +18,12 @@
         <div class="flip-inner" :class="{ 'is-flipped': hasFlipped }">
           <div class="flip-front login-card">
             <div class="card-header card-header--front">
-              <span class="card-title">Sign Up</span>
+              <span class="card-title">登录</span>
             </div>
           </div>
           <div class="flip-back login-card">
             <div class="card-header">
-              <span class="card-title">Sign Up</span>
+              <span class="card-title">登录</span>
             </div>
             <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" label-width="0px" class="login-form">
               <el-form-item prop="username" class="form-item">
@@ -51,6 +51,10 @@
                   登录
                 </el-button>
               </el-form-item>
+              <div class="register-hint">
+                <span>没有账户？</span>
+                <router-link to="/register" class="register-link">注册一个</router-link>
+              </div>
             </el-form>
           </div>
         </div>
@@ -530,5 +534,23 @@ const submitForm = () => {
   .card-subtitle {
     font-size: 0.85rem;
   }
+}
+
+.register-hint {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.register-link {
+  color: var(--accent-focus);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color var(--motion-duration) var(--motion-ease);
+}
+
+.register-link:hover {
+  color: var(--btn-hover);
 }
 </style>

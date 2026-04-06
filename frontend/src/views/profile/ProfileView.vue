@@ -377,7 +377,7 @@
               </div>
               <div class="text-center">
                 <h4 class="text-lg font-bold text-slate-800 mb-2">账号防御系统已开启</h4>
-                <p class="text-slate-500 text-sm italic px-4">“守护每一份信任，安全就在指尖。”</p>
+                <p class="text-slate-500 text-sm italic px-4">"守护每一份信任，安全就在指尖。"</p>
               </div>
               <!-- 底部点缀 -->
               <div class="absolute bottom-4 flex space-x-1">

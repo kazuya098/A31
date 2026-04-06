@@ -30,4 +30,10 @@ public class RecordListDto {
 
     /** 识别类型，如 human / non_human，对应 recognition_record.type */
     private String type;  // human / non_human
+
+    /** 置信度，对应 recognition_record.confidence */
+    private Double confidence;
+
+    /** 识别状态：pending / done / failed，对应 recognition_record.status */
+    private String status;
 }

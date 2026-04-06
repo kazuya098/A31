@@ -88,9 +88,9 @@ public class RecognitionController {
                 .orElseGet(() -> Result.fail(ResultCode.NOT_FOUND, "记录不存在"));
     }
 
-    /** 同一物种个体列表：id + 封面图 + 详细报告链接用 individualId */
+    /** 同一物种个体列表：id + 封面图 + 详细报告链接用 individualId，type 可不传（返回全部） */
     @GetMapping("/individuals")
-    public Result<List<IndividualListDto>> individuals(@RequestParam(value = "type", defaultValue = "human") String type) {
+    public Result<List<IndividualListDto>> individuals(@RequestParam(value = "type", required = false) String type) {
         List<IndividualListDto> list = recognitionService.listIndividuals(type);
         return Result.ok(list);
     }

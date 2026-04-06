@@ -10,7 +10,7 @@
           </h1>
           <p class="text-gray-500 text-lg">安全、高效的跨时域智能识别平台</p>
         </div>
-        <button @click="router.push('/upload')" ref="startButton" class="relative isolate overflow-hidden group px-10 py-4 mr-4 rounded-full text-white text-lg font-medium transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
+        <button @click="goToUpload" ref="startButton" class="relative isolate overflow-hidden group px-10 py-4 mr-4 rounded-full text-white text-lg font-medium transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
           <span class="absolute inset-0 bg-gradient-to-r from-orange-500 to-red-500 transition-transform duration-300 ease-out group-hover:scale-105"></span>
           <!-- Glow element -->
           <span class="absolute -inset-px rounded-full bg-gradient-to-r from-orange-400 via-pink-500 to-purple-600 opacity-0 transition-opacity duration-500 group-hover:opacity-100 animate-spin-slow"
@@ -71,7 +71,7 @@
       <div class="mt-8 bg-white/60 backdrop-blur-md border border-white/50 p-10 rounded-[2.5rem] shadow-soft-blue animate-fade-in-up" style="animation-delay: 500ms;">
         <div class="flex justify-between items-center mb-8">
           <h3 class="text-xl font-semibold text-gray-800">最近识别记录</h3>
-          <button @click="router.push('/records')" class="text-sm font-medium text-orange-600 hover:text-orange-700 hover:underline">查看全部</button>
+          <button @click="goToRecords" class="text-sm font-medium text-orange-600 hover:text-orange-700 hover:underline">查看全部</button>
         </div>
         
         <el-table :data="recentRecords" style="width: 100%" class="custom-table" :show-header="false">
@@ -142,6 +142,8 @@ import BarChart from './BarChart.vue';
 import AccuracyPolarChart from './AccuracyPolarChart.vue';
 
 const router = useRouter();
+const goToUpload = () => router.push('/upload');
+const goToRecords = () => router.push('/records');
 
 const startButton = ref(null);
 const glowStyle = ref({});
