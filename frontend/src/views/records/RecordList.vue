@@ -86,13 +86,13 @@
           stripe
           align="center"
         >
-          <el-table-column prop="id" label="ID" width="80" align="center">
+          <el-table-column prop="id" label="ID" width="90" align="center">
             <template #default="scope">
-              <span class="text-gray-400 font-mono text-xs">#{{ scope.row.id }}</span>
+               <span class="text-gray-800 font-mono text-base font-bold">#{{ scope.row.id }}</span>
             </template>
           </el-table-column>
 
-          <el-table-column prop="type" label="识别类型" width="160" align="center">
+          <el-table-column prop="type" label="识别类型" align="center">
             <template #default="scope">
               <span :class="['px-3 py-1 rounded-full text-xs font-medium', getTypeTagClass(scope.row.type)]">
                 {{ getTypeLabel(scope.row.type) }}
@@ -100,7 +100,7 @@
             </template>
           </el-table-column>
 
-          <el-table-column prop="recognitionTime" label="识别时间" width="200" align="center">
+          <el-table-column prop="recognitionTime" label="识别时间" align="center">
             <template #default="scope">
               <div class="flex items-center justify-center text-gray-600 text-sm">
                 <el-icon class="mr-1.5 text-gray-400"><Clock /></el-icon>
@@ -109,7 +109,7 @@
             </template>
           </el-table-column>
 
-          <el-table-column prop="operatorName" label="操作员" width="160" align="center">
+          <el-table-column prop="operatorName" label="操作员" align="center">
             <template #default="scope">
               <div class="flex items-center justify-center">
                 <div class="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center mr-2">
@@ -134,7 +134,7 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="160" align="center">
+          <el-table-column label="操作" align="center">
             <template #default="scope">
               <div class="flex items-center justify-center gap-2">
                 <el-button 

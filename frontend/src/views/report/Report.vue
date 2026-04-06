@@ -12,12 +12,15 @@
         <el-icon :size="20" class="mr-2"><Download /></el-icon>
         <span class="text-sm font-bold">下载 PDF 报告</span>
       </el-button>
+    </div>
 
+    <!-- Back button now at top-left -->
+    <div v-if="reportData" class="fixed top-12 left-12 z-50">
       <el-button
         @click="goBack"
-        class="back-btn-rect shadow-xl flex items-center justify-center w-48 h-14 rounded-xl hover:scale-105 transition-transform border-none"
+        class="back-btn-rect shadow-xl flex items-center justify-center w-40 h-12 rounded-xl hover:scale-105 transition-transform border-none"
       >
-        <el-icon :size="20" class="mr-2"><ArrowLeft /></el-icon>
+        <el-icon :size="18" class="mr-2"><ArrowLeft /></el-icon>
         <span class="text-sm font-bold">返回记录列表</span>
       </el-button>
     </div>

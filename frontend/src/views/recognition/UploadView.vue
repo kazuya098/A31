@@ -6,11 +6,12 @@
     <div class="absolute top-[20%] right-[10%] w-[20%] h-[20%] bg-purple-200/10 blur-[100px] rounded-full animate-blob animation-delay-4000 pointer-events-none"></div>
 
     <!-- Header -->
-    <header class="flex justify-between items-center mb-4 py-3 px-12 shrink-0 z-10 animate-fade-in-down">
+    <header class="flex justify-between items-center mb-16 px-12 shrink-0 z-10 animate-fade-in-down">
       <div>
-        <h1 class="text-3xl font-light tracking-tight text-gray-900 mb-1">
+        <h1 class="text-4xl font-light tracking-tight text-gray-900 mb-2">
           上传识别 <span class="font-semibold text-orange-600">分析中心</span>
         </h1>
+        <p class="text-gray-500 text-lg font-light leading-relaxed">上传图像进行跨区域、跨时域的特征比对与深度分析</p>
       </div>
     </header>
 
@@ -157,7 +158,8 @@
 
                 <div class="mt-4 flex justify-center gap-4 shrink-0">
                    <el-button size="default" @click="reset" :icon="RefreshLeft" class="round-btn">放弃重试</el-button>
-                   <el-button size="default" type="primary" :icon="View" @click="goDetails" class="round-btn glow-btn">同步至个体档案</el-button>
+                   <el-button v-if="result && result.reportId" size="default" type="warning" :icon="Document" @click="goReport(result)" class="round-btn glow-btn">查看完整报告</el-button>
+                    <el-button size="default" type="primary" :icon="View" @click="goDetails" class="round-btn glow-btn">同步至个体档案</el-button>
                 </div>
              </div>
 
@@ -200,13 +202,22 @@
                       </div>
                    </div>
 
-                   <div class="mt-auto bg-gray-950/5 p-6 rounded-[2rem] border border-gray-200/20">
+                   <div class="mt-auto bg-gray-950/5 p-5 rounded-[2rem] border border-gray-200/20">
                       <h5 class="text-xs font-black text-gray-400 uppercase mb-3 flex items-center gap-2">
-                         <el-icon class="text-orange-500"><InfoFilled /></el-icon> 诊断建议
+                         <el-icon class="text-orange-500"><Picture /></el-icon> 历史对照影像
                       </h5>
-                      <p class="text-[11px] text-gray-500 leading-relaxed">
-                         检测到该个体在近 30 天内曾出现于 4 个不同的时钟扇区。建议核对 <b>个体档案</b> 中的跨域移动路径。
-                      </p>
+                      <div v-if="result.relatedImages && result.relatedImages.length" class="flex gap-3 overflow-x-auto custom-scrollbar pb-1">
+                        <img 
+                          v-for="(img, idx) in result.relatedImages.slice(0, 4)" 
+                          :key="idx" 
+                          :src="toAbsoluteUrl(img.imagePath)" 
+                          class="w-16 h-16 rounded-xl object-cover border-2 border-white/50 shadow-sm hover:scale-105 transition-transform"
+                          alt="Related history"
+                        />
+                      </div>
+                      <div v-else class="text-xs text-gray-400 italic py-2">
+                         该个体无其他历史影像记录。
+                      </div>
                    </div>
                 </div>
              </div>
@@ -228,7 +239,7 @@
                 v-for="(item, idx) in history" 
                 :key="idx"
                 class="bg-white/40 p-5 rounded-[2rem] border border-white/40 hover:bg-white/80 transition-all duration-300 cursor-pointer group hover:shadow-lg hover:-translate-y-1"
-                @click="status === 'idle' ? loadHistory(item) : null"
+                @click="goReport(item)"
                >
                   <div class="flex gap-4 items-center">
                      <div class="w-16 h-16 rounded-2xl overflow-hidden bg-gray-100 shadow-sm">
@@ -252,6 +263,15 @@
             </div>
 
 
+         </div>
+
+         <!-- Bottom Box: Decorative Image re1 -->
+         <div class="flex-1 overflow-hidden rounded-[3rem] shadow-premium relative mt-2 group border border-white/40 glass-panel flex items-end min-h-[200px]">
+           <img src="@/assets/images/recoginition/re1.jpg" class="absolute inset-0 w-full h-full object-cover filter grayscale hover:grayscale-0 transition-all duration-700 opacity-80 group-hover:opacity-100 group-hover:scale-105" alt="Re1 Decorative Block" />
+           <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-6 z-10">
+              <p class="text-white font-bold text-sm tracking-widest uppercase">Cross-Domain</p>
+              <p class="text-white/70 text-[10px] uppercase tracking-wider">Vision Analytics</p>
+           </div>
          </div>
       </aside>
 
@@ -278,7 +298,8 @@ import {
   Opportunity,
   Calendar,
   Location,
-  InfoFilled
+  InfoFilled,
+  Document
 } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { uploadImage, getIndividualReport } from '@/services/modules/recognition.js';
@@ -288,9 +309,9 @@ const router = useRouter();
 // Config
 const steps = ['载入影像', '特征提取', '数据库比对', '个体索引', '报告生成'];
 const history = ref([
-  { individualId: 1024, taskId: 'TASK-XW290-A', confidence: 0.98, imageUrl: '/examples/mandrill_1.jpg' },
-  { individualId: 1056, taskId: 'TASK-KJ112-B', confidence: 0.85, imageUrl: '/examples/mandrill_2.jpg' },
-  { individualId: 1102, taskId: 'TASK-ZZ003-C', confidence: 0.92, imageUrl: '/examples/mandrill_3.jpg' },
+  { individualId: 1024, taskId: 'TASK-XW290-A', confidence: 0.98, imageUrl: '/examples/mandrill_1.jpg', reportId: 1 },
+  { individualId: 1056, taskId: 'TASK-KJ112-B', confidence: 0.85, imageUrl: '/examples/mandrill_2.jpg', reportId: 2 },
+  { individualId: 1102, taskId: 'TASK-ZZ003-C', confidence: 0.92, imageUrl: '/examples/mandrill_3.jpg', reportId: 3 },
 ]);
 
 // State
@@ -482,6 +503,15 @@ const reset = () => {
 
 const goDetails = () => {
   router.push('/individuals');
+};
+
+const goReport = (item) => {
+  const id = item.reportId || item.id || item.taskId;
+  if (id) {
+    router.push(`/report/${id}`);
+  } else {
+    ElMessage.warning('暂无详细报告数据');
+  }
 };
 </script>
 

@@ -1,124 +1,146 @@
 <template>
-  <div class="h-full font-sans">
-    <!-- 主面板 -->
-    <main class="h-full flex flex-col pt-4 px-8">
-      <!-- 头部欢迎区 -->
-      <header class="flex justify-between items-center mb-16 animate-fade-in-down">
-        <div>
-          <h1 class="text-4xl font-light tracking-tight text-gray-900 mb-2">
-            欢迎使用 <span class="font-semibold text-orange-600">跨时域生物识别系统</span>
-          </h1>
-          <p class="text-gray-500 text-lg">安全、高效的跨时域智能识别平台</p>
-        </div>
-        <button @click="goToUpload" ref="startButton" class="relative isolate overflow-hidden group px-10 py-4 mr-4 rounded-full text-white text-lg font-medium transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
-          <span class="absolute inset-0 bg-gradient-to-r from-orange-500 to-red-500 transition-transform duration-300 ease-out group-hover:scale-105"></span>
-          <!-- Glow element -->
-          <span class="absolute -inset-px rounded-full bg-gradient-to-r from-orange-400 via-pink-500 to-purple-600 opacity-0 transition-opacity duration-500 group-hover:opacity-100 animate-spin-slow"
-                :style="glowStyle"></span>
-
-          <span class="relative z-10 flex items-center justify-center">
-            <span>开始识别</span>
-            <span class="ml-2 transform transition-transform duration-300 ease-out group-hover:translate-x-1">
-              <el-icon><ArrowRight /></el-icon>
-            </span>
-            <span class="absolute bottom-0 left-0 w-full h-0.5 bg-transparent transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out origin-left"></span>
-          </span>
-        </button>
-      </header>
-
-      <!-- KPI 统计卡片区 -->
-      <div class="grid grid-cols-4 gap-12 mb-20">
-        <div v-for="(kpi, index) in kpis" :key="index" 
-             :class="['p-8 rounded-[2rem] animate-staggered-entry kpi-card', kpi.bgClass]"
-             :style="{ animationDelay: `${index * 100}ms` }">
-          <div :class="['w-12 h-12 rounded-full flex items-center justify-center mb-6', kpi.iconBg]">
-            <el-icon :class="['w-6 h-6', kpi.iconColor]" :size="24"><component :is="kpi.icon" /></el-icon>
-          </div>
-          <p class="text-sm text-gray-600 mb-2 font-medium">{{ kpi.title }}</p>
-          <p class="text-5xl font-extrabold tracking-tight text-gray-800 mb-4">{{ kpi.value }}</p>
-          <p :class="['text-sm font-medium flex items-center', kpi.trendClass]">
-            <el-icon class="mr-1"><component :is="kpi.trendIcon" /></el-icon>
-            {{ kpi.trend }} <span class="text-gray-500 ml-2 font-normal">本周</span>
-          </p>
+  <div class="h-full font-sans overflow-y-auto">
+    <!-- 主面板: 移除顶部内边距，让图片全覆盖 -->
+    <main class="min-h-full flex flex-col bg-[#FDF9F3]">
+      
+      <!-- 1. 顶部全覆盖背景图 Banner -->
+      <div class="relative w-full h-[280px] shrink-0 overflow-hidden shadow-lg rounded-[3rem]">
+        <img src="@/assets/images/dashboard/dashboard.jpg" class="absolute inset-0 w-full h-full object-cover" alt="Dashboard Banner">
+        <!-- 强化版橙色滤镜 (更为显著的品牌色渗透) -->
+        <div class="absolute inset-0 bg-gradient-to-br from-orange-600/85 via-orange-500/40 to-transparent mix-blend-multiply"></div>
+        <div class="absolute inset-0 bg-gradient-to-tr from-orange-400/20 to-transparent"></div>
+        <!-- 文字保护蒙层: 稍微收窄，让橙色更外溢 -->
+        <div class="absolute inset-0 bg-gradient-to-r from-[#FDF9F3]/90 via-[#FDF9F3]/10 to-transparent flex flex-col justify-center px-16">
+          <header class="animate-fade-in-down">
+            <div>
+              <h1 class="text-4xl font-light tracking-tight text-gray-900 mb-2">
+                欢迎使用 <span class="font-black text-orange-600 tracking-tighter">跨时域生物识别系统</span>
+              </h1>
+              <p class="text-gray-500 text-lg font-medium max-w-xl leading-relaxed">
+                基于深度时序神经网络，为您提供安全、高效、精准的识别追踪平台。
+              </p>
+            </div>
+            
+            <div class="mt-6 flex items-center gap-6">
+              <button @click="goToUpload" ref="startButton" class="relative isolate overflow-hidden group px-10 py-3.5 rounded-xl text-white text-lg font-bold transition-all duration-300 ease-out shadow-lg shadow-orange-500/20">
+                <span class="absolute inset-0 bg-gradient-to-r from-orange-500 to-red-600 transition-transform duration-300 ease-out group-hover:scale-105"></span>
+                <span class="relative z-10 flex items-center justify-center">
+                  <span>开始识别任务</span>
+                  <span class="ml-3 transform transition-transform duration-300 ease-out group-hover:translate-x-1">
+                    <el-icon><ArrowRight /></el-icon>
+                  </span>
+                </span>
+              </button>
+              
+              <div class="flex items-center gap-2 text-gray-400">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                <span class="text-sm font-bold tracking-widest uppercase italic">System Real-time Monitoring</span>
+              </div>
+            </div>
+          </header>
         </div>
       </div>
 
-      <!-- 图表控制面板区 -->
-      <div class="grid grid-cols-3 gap-16 flex-1 mb-8">
-        <!-- 柱状图：识别数量统计 -->
-        <div class="col-span-2 bg-white/60 backdrop-blur-md border border-white/50 p-10 rounded-[2.5rem] shadow-soft-blue animate-fade-in-up hover:shadow-soft-blue transition-shadow duration-500">
-          <div class="flex justify-between items-center mb-8">
-            <h3 class="text-xl font-semibold text-gray-800">识别数量走势</h3>
-            <div class="bg-gray-100 rounded-full px-4 py-1 text-xs text-gray-500 font-medium">最近 7 天</div>
-          </div>
-          <BarChart :barData="barData" :lineData="lineData" :categories="categories" height="350px" />
-        </div>
+      <!-- 2. 下方内容区 -->
+      <div class="px-12 py-10 space-y-12">
         
-        <!-- 环状图：准确率统计 -->
-        <div class="bg-white/60 backdrop-blur-md border border-white/50 p-10 rounded-[2.5rem] shadow-soft-blue animate-fade-in-up hover:shadow-soft-blue transition-shadow duration-500" style="animation-delay: 300ms;">
-          <h3 class="text-xl font-semibold text-gray-800 mb-8">类型分布与准确率</h3>
-          <AccuracyPolarChart :data="accuracyData" height="350px" />
-          <div class="mt-8 pt-4 border-t border-gray-100 flex justify-around items-center text-sm text-gray-600">
-            <div v-for="item in accuracyData" :key="item.name" class="flex items-center space-x-2">
-              <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: item.colorConfig[1] }"></span>
-              <span>{{ item.name }} ({{ item.value }}%)</span>
+        <!-- KPI 统计卡片区 -->
+        <div class="grid grid-cols-4 gap-8">
+          <div v-for="(kpi, index) in kpis" :key="index" 
+               :class="['p-8 rounded-[2rem] shadow-sm flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:-translate-y-1', kpi.bgClass]">
+            <div>
+              <div :class="['w-12 h-12 rounded-2xl flex items-center justify-center mb-6 shadow-sm', kpi.iconBg]">
+                <el-icon :class="['w-6 h-6', kpi.iconColor]" :size="24"><component :is="kpi.icon" /></el-icon>
+              </div>
+              <p class="text-xs text-gray-500 mb-1 font-black uppercase tracking-widest">{{ kpi.title }}</p>
+              <p class="text-4xl font-black tracking-tight text-gray-900 mb-2">{{ kpi.value }}</p>
+            </div>
+            <p :class="['text-[11px] font-bold flex items-center mt-4 px-3 py-1 rounded-full w-fit bg-white/50 backdrop-blur-sm', kpi.trendClass]">
+              <el-icon class="mr-1"><component :is="kpi.trendIcon" /></el-icon>
+              {{ kpi.trend }} <span class="text-gray-400 ml-1 font-normal uppercase">vs last week</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- 图表控制面板区 -->
+        <div class="grid grid-cols-3 gap-12">
+          <!-- 柱状图：识别数量统计 -->
+          <div class="col-span-2 bg-white/60 backdrop-blur-md border border-white/40 p-10 rounded-[2.5rem] shadow-soft-blue animate-fade-in-up transition-shadow duration-500">
+            <div class="flex justify-between items-center mb-8">
+              <h3 class="text-xl font-bold text-gray-900 tracking-tight">识别数量走势</h3>
+              <div class="bg-gray-100 rounded-full px-4 py-1 text-[10px] text-gray-500 font-bold uppercase tracking-wider">Last 7 Days</div>
+            </div>
+            <BarChart :barData="barData" :lineData="lineData" :categories="categories" height="350px" />
+          </div>
+          
+          <!-- 环状图：准确率统计 -->
+          <div class="bg-white/60 backdrop-blur-md border border-white/40 p-10 rounded-[2.5rem] shadow-soft-blue animate-fade-in-up shadow-sm transition-shadow duration-500">
+            <h3 class="text-xl font-bold text-gray-900 tracking-tight mb-8">类型分布与准确率</h3>
+            <AccuracyPolarChart :data="accuracyData" height="350px" />
+            <div class="mt-8 pt-4 border-t border-gray-200/40 flex justify-around items-center text-[11px] font-bold text-gray-500 uppercase">
+              <div v-for="item in accuracyData" :key="item.name" class="flex items-center space-x-2">
+                <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: item.colorConfig[1] }"></span>
+                <span>{{ item.name }}</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      
-      <!-- 最近识别记录 -->
-      <div class="mt-8 bg-white/60 backdrop-blur-md border border-white/50 p-10 rounded-[2.5rem] shadow-soft-blue animate-fade-in-up" style="animation-delay: 500ms;">
-        <div class="flex justify-between items-center mb-8">
-          <h3 class="text-xl font-semibold text-gray-800">最近识别记录</h3>
-          <button @click="goToRecords" class="text-sm font-medium text-orange-600 hover:text-orange-700 hover:underline">查看全部</button>
-        </div>
         
-        <el-table :data="recentRecords" style="width: 100%" class="custom-table" :show-header="false">
-          <el-table-column label="头像" width="70">
-            <template #default="scope">
-              <el-avatar :src="scope.row.avatar" :size="40" class="shadow-sm"></el-avatar>
-            </template>
-          </el-table-column>
-          <el-table-column prop="name" label="姓名" width="120">
-            <template #default="scope">
-              <span class="font-medium text-gray-900">{{ scope.row.name }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="id" label="ID" width="100">
-             <template #default="scope">
-              <span class="text-gray-400 font-mono text-xs">{{ scope.row.id }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="type" label="识别类型" width="140">
-            <template #default="scope">
-              <span :class="['px-3 py-1 rounded-full text-xs font-medium', 
-                scope.row.type === '人脸识别' ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700']">
-                {{ scope.row.type }}
-              </span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="time" label="识别时间" width="200">
-             <template #default="scope">
-              <span class="text-gray-500 text-sm">{{ scope.row.time }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="device" label="识别设备">
-             <template #default="scope">
-              <div class="flex items-center text-gray-600">
-                <div class="w-1.5 h-1.5 rounded-full bg-green-500 mr-2"></div>
-                {{ scope.row.device }}
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="80" align="right">
-            <template #default>
-              <button class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors">
-                <el-icon><MoreFilled /></el-icon>
-              </button>
-            </template>
-          </el-table-column>
-        </el-table>
+        <!-- 最近识别记录 -->
+        <div class="bg-white/60 backdrop-blur-md border border-white/40 p-10 rounded-[2.5rem] shadow-soft-blue animate-fade-in-up mb-10">
+          <div class="flex justify-between items-center mb-10">
+            <h3 class="text-2xl font-black text-gray-900 tracking-tight">最近识别记录</h3>
+            <button @click="goToRecords" class="text-sm font-bold text-orange-600 hover:text-orange-700 underline underline-offset-4 decoration-2">查看全部记录</button>
+          </div>
+          
+          <el-table :data="recentRecords" style="width: 100%" class="custom-table" :show-header="false">
+            <el-table-column label="头像" width="80">
+              <template #default="scope">
+                <el-avatar :src="scope.row.avatar" :size="48" class="shadow-sm border-2 border-white"></el-avatar>
+              </template>
+            </el-table-column>
+            <el-table-column prop="name" label="姓名" min-width="150">
+              <template #default="scope">
+                <span class="text-base font-bold text-gray-900">{{ scope.row.name }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="id" label="ID" width="120">
+               <template #default="scope">
+                <span class="text-gray-400 font-mono text-xs italic">#{{ scope.row.id }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="type" label="识别类型" width="160">
+              <template #default="scope">
+                <span :class="['px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider', 
+                  scope.row.type === '人脸识别' ? 'bg-orange-500 text-white' : 'bg-emerald-500 text-white shadow-sm']">
+                  {{ scope.row.type }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="time" label="识别时间" width="220">
+               <template #default="scope">
+                <div class="flex flex-col text-sm">
+                  <span class="font-bold text-gray-700">{{ scope.row.time }}</span>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="device" label="识别设备" min-width="120">
+               <template #default="scope">
+                <div class="flex items-center text-gray-500 font-medium">
+                  <div class="w-2 h-2 rounded-full bg-emerald-400 mr-3 animate-pulse"></div>
+                  {{ scope.row.device }}
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column width="120" fixed="right" align="right">
+              <template #default>
+                <el-button type="primary" link @click="goToUpload" class="font-black text-xs uppercase tracking-widest hover:translate-x-1 transition-transform">
+                  详情 <el-icon class="ml-1"><ArrowRight /></el-icon>
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
       </div>
     </main>
   </div>
@@ -137,7 +159,8 @@ import {
   ArrowRight,
   CaretTop,
   CaretBottom,
-  MoreFilled
+  MoreFilled,
+  List
 } from '@element-plus/icons-vue';
 import BarChart from './BarChart.vue';
 import AccuracyPolarChart from './AccuracyPolarChart.vue';
@@ -151,52 +174,39 @@ const glowStyle = ref({});
 
 const handleMouseMove = (e) => {
   if (!startButton.value) return;
-
   const rect = startButton.value.getBoundingClientRect();
-  const x = e.clientX - rect.left; // x position within the element.
-  const y = e.clientY - rect.top;  // y position within the element.
-
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
   glowStyle.value = {
     background: `radial-gradient(circle at ${x}px ${y}px, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 70%)`
   };
 };
 
 const handleMouseLeave = () => {
-  glowStyle.value = {}; // Reset glow on mouse leave
+  glowStyle.value = {};
 };
 
 const fetchRecentRecords = async () => {
   try {
-    // 这里的请求不带分页限制，以便统计 KPI，或者可以根据业务需要再发一个统计接口
     const res = await getRecognitionRecords();
     const data = res?.data || res;
-    
     if (data && Array.isArray(data)) {
-      // 1. 更新最近识别记录 (取前3条)
       recentRecords.value = data.slice(0, 3).map(record => ({
         avatar: toAbsoluteUrl(record.imagePath) || 'https://cube.elemecdn.com/0/88/03b0dff330f245542281691515e9c.jpeg',
         name: record.recognitionResult || '未知个体',
-        id: `REC-${record.id}`,
+        id: record.id,
         type: record.type === 'human' ? '人脸识别' : '非人识别',
         time: formatRelativeTime(record.recognitionTime),
         device: record.operationStatus || '边缘计算节点 Alpha',
         rawId: record.id
       }));
 
-      // 2. 统计并更新 KPI 盒子
-      // 识别总量
       const total = data.length;
       kpis.value[0].value = total.toLocaleString();
-
-      // 活跃用户 (去重 operatorName)
       const users = new Set(data.map(r => r.operatorName).filter(Boolean));
       kpis.value[1].value = users.size.toLocaleString();
-
-      // 异常拦截 (比如置信度低于 0.7 的记录，或者根据业务状态统计)
       const anomalies = data.filter(r => r.confidence < 0.7).length;
       kpis.value[2].value = anomalies.toLocaleString();
-
-      // 系统准确率 (平均置信度)
       const avgConfidence = data.reduce((acc, r) => acc + (r.confidence || 0), 0) / (total || 1);
       kpis.value[3].value = (avgConfidence * 100).toFixed(1) + '%';
     }
@@ -223,29 +233,12 @@ const formatRelativeTime = (isoStr) => {
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
-
   if (days > 0) return `${days}天前`;
   if (hours > 0) return `${hours}小时前`;
   if (minutes > 0) return `${minutes}分钟前`;
   return '刚刚';
 };
 
-onMounted(() => {
-  fetchRecentRecords();
-  if (startButton.value) {
-    startButton.value.addEventListener('mousemove', handleMouseMove);
-    startButton.value.addEventListener('mouseleave', handleMouseLeave);
-  }
-});
-
-onUnmounted(() => {
-  if (startButton.value) {
-    startButton.value.removeEventListener('mousemove', handleMouseMove);
-    startButton.value.removeEventListener('mouseleave', handleMouseLeave);
-  }
-});
-
-// KPI 数据 (初始化 mock 数据)
 const kpis = ref([
   { title: '识别总量', value: '8,432', trend: '+12.5%', trendIcon: CaretTop, icon: Monitor, bgClass: 'bg-white/60 backdrop-blur-md border border-white/50 shadow-soft-blue', iconBg: 'bg-orange-50', iconColor: 'text-orange-500', trendClass: 'text-emerald-600' },
   { title: '活跃用户', value: '1,204', trend: '+5.2%', trendIcon: CaretTop, icon: User, bgClass: 'bg-white/60 backdrop-blur-md border border-white/50 shadow-soft-blue', iconBg: 'bg-blue-50', iconColor: 'text-blue-500', trendClass: 'text-emerald-600' },
@@ -253,20 +246,22 @@ const kpis = ref([
   { title: '系统准确率', value: '98.7%', trend: '+0.4%', trendIcon: CaretTop, icon: TrendCharts, bgClass: 'bg-gradient-to-br from-orange-500/90 to-orange-500/10 backdrop-blur-md shadow-soft-blue border border-white/50', iconBg: 'bg-orange-50', iconColor: 'text-orange-500', trendClass: 'text-emerald-600' },
 ]);
 
-// 图表数据
 const categories = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 const barData = [1200, 2000, 1500, 2800, 700, 1100, 1300];
 const lineData = [80, 87, 85, 88, 86, 89, 90];
 
-// 极坐标面积图数据
 const accuracyData = ref([
   { value: 95, name: '面部特征', colorConfig: ['#fed7aa', '#f97316'] },
   { value: 88, name: '指纹信息', colorConfig: ['#fca5a5', '#ef4444'] },
   { value: 76, name: '步态轨迹', colorConfig: ['#a7f3d0', '#10b981'] },
 ]);
 
-// 在挂载后初始化渐变色，避免在 setup 阶段 ECharts 未就绪导致的奔溃
 onMounted(() => {
+  fetchRecentRecords();
+  if (startButton.value) {
+    startButton.value.addEventListener('mousemove', handleMouseMove);
+    startButton.value.addEventListener('mouseleave', handleMouseLeave);
+  }
   accuracyData.value = accuracyData.value.map(item => ({
     ...item,
     itemStyle: {
@@ -278,26 +273,21 @@ onMounted(() => {
   }));
 });
 
-// 最近记录数据
+onUnmounted(() => {
+  if (startButton.value) {
+    startButton.value.removeEventListener('mousemove', handleMouseMove);
+    startButton.value.removeEventListener('mouseleave', handleMouseLeave);
+  }
+});
+
 const recentRecords = ref([]);
 </script>
 
 <style scoped>
-.kpi-card {
-  transition: all 0.3s ease;
-  cursor: pointer;
+.shadow-soft-blue {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05);
 }
-
-.kpi-card:hover {
-  animation: kpi-bounce 0.6s ease-in-out infinite;
-}
-
-@keyframes kpi-bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
+.custom-table :deep(.el-table__row) {
+  background-color: transparent !important;
 }
 </style>

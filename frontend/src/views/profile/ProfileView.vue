@@ -20,8 +20,10 @@
 
     <!-- Main Content Area -->
     <div class="flex-1 flex space-x-8 main-content">
-      <!-- 左侧垂直导航栏 -->
-      <nav class="side-nav bg-white/60 backdrop-blur-md rounded-2xl p-6 shadow-soft-blue w-fit h-fit shrink-0">
+      <!-- 左侧区域 (导航与图片) -->
+      <div class="flex flex-col gap-6 shrink-0 w-64">
+        <!-- 左侧垂直导航栏 -->
+        <nav class="side-nav bg-white/60 backdrop-blur-md rounded-2xl p-6 shadow-soft-blue h-fit">
 
 
         <nav class="flex-grow">
@@ -39,9 +41,19 @@
         </nav>
       </nav>
 
+      <div class="h-80 rounded-3xl overflow-hidden shadow-soft-blue border border-white/60 group relative flex items-end">
+        <div class="absolute inset-0 bg-black/30 z-10 pointer-events-none group-hover:bg-black/10 transition-colors duration-700"></div>
+        <img src="@/assets/images/settings/settings1.jpg" alt="Settings Decorative" class="absolute inset-0 w-full h-full object-cover filter brightness-75 transition-all duration-700 ease-out group-hover:scale-110 group-hover:brightness-90" />
+        <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-gray-900/80 to-transparent p-5 opacity-90 group-hover:opacity-100 transition-opacity duration-500 z-20">
+           <p class="text-white/90 text-sm font-bold tracking-widest uppercase">System Config</p>
+           <p class="text-white/60 text-[10px] uppercase tracking-wider">Advanced Options</p>
+        </div>
+      </div>
+      </div>
+
       <!-- 右侧内容区域 -->
-        <div class="content-area flex-grow backdrop-blur-xl rounded-3xl p-8 shadow-soft-blue flex border border-white/50 bg-white/30">
-          <div class="w-3/4 bg-white/40 rounded-l-3xl p-10 flex flex-col justify-start space-y-10">
+      <div class="content-area flex-grow backdrop-blur-xl rounded-3xl p-8 shadow-soft-blue flex border border-white/50 bg-white/30">
+        <div class="w-full bg-white/40 rounded-3xl p-10 flex flex-col justify-start space-y-10">
             <template v-if="activeTabId === 'user-info'">
               <!-- Top section: Image and User Details -->
               <div class="flex items-start w-full">
@@ -346,40 +358,7 @@
             </template>
           </div>
 
-          <!-- 右侧装饰性小盒子 -->
-          <div class="flex-grow pl-4 flex flex-col space-y-6">
-            <!-- 盒子 1: 未来实验室 (装饰性) -->
-            <div class="flex-none aspect-square relative overflow-hidden rounded-2xl group cursor-default shadow-soft-blue border border-white/40">
-              <img src="/images/tech_bg.png" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="tech-bg">
-              <div class="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent"></div>
-              <div class="absolute inset-0 backdrop-blur-[2px] group-hover:backdrop-blur-none transition-all duration-500"></div>
-              <div class="absolute bottom-6 left-6 right-6">
-                <div class="flex items-center space-x-2 mb-2">
-                  <span class="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></span>
-                  <span class="text-xs font-bold text-orange-200 tracking-widest uppercase">Future Lab</span>
-                </div>
-                <h4 class="text-xl font-bold text-white mb-1">未来科技 · 智领未来</h4>
-                <p class="text-white/70 text-sm">跨时域生物识别核心驱动中...</p>
-              </div>
-            </div>
 
-            <!-- 盒子 2: 安全脉动 (装饰性) -->
-            <div class="flex-none aspect-square relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-50/50 to-blue-50/50 p-6 shadow-soft-blue border border-white/60 flex flex-col justify-center items-center group">
-              <div class="relative w-24 h-24 mb-6">
-                <!-- 呼吸光效底层 -->
-                <div class="absolute inset-0 bg-orange-200 rounded-full blur-2xl opacity-40 animate-pulse"></div>
-                <img src="/images/security_icon.png" class="relative z-10 w-full h-full object-contain transition-all duration-500 group-hover:rotate-12 group-hover:scale-110" alt="security-icon">
-              </div>
-              <div class="text-center">
-                <h4 class="text-lg font-bold text-slate-800 mb-2">账号防御系统已开启</h4>
-                <p class="text-slate-500 text-sm italic px-4">"守护每一份信任，安全就在指尖。"</p>
-              </div>
-              <!-- 底部点缀 -->
-              <div class="absolute bottom-4 flex space-x-1">
-                <div v-for="i in 3" :key="i" class="w-1.5 h-1.5 rounded-full bg-orange-300/60" :style="{animationDelay: i*0.2 + 's'}" :class="'animate-bounce'"></div>
-              </div>
-            </div>
-          </div>
         </div>
     </div>
   </div>

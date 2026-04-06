@@ -98,12 +98,12 @@ const submitForm = () => {
   --card-bg: rgba(30, 27, 24, 0.48);
   --card-border: rgba(255, 255, 255, 0.16);
   --card-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
-  --text-primary: #fafaf9;
+  --text-primary: #d0cdca;
   --text-muted: #a8a29e;
   --btn-bg: #b45309;
   --btn-hover: #d97706;
   --btn-glow: rgba(217, 119, 6, 0.45);
-  --input-bg: rgba(255, 255, 255, 0.06);
+  --input-bg: transparent;
   --input-border: rgba(255, 255, 255, 0.12);
   --accent-focus: #f59e0b;
   --accent-glow: rgba(245, 158, 11, 0.4);
@@ -341,12 +341,10 @@ const submitForm = () => {
 .login-input :deep(.el-input__wrapper) {
   border-radius: 12px;
   padding: 10px 14px;
-  background: var(--input-bg) !important;
+  background-color: transparent !important;
   border: 1px solid var(--input-border) !important;
   box-shadow: none !important;
-  transition: box-shadow var(--motion-duration) var(--motion-ease),
-    border-color var(--motion-duration) var(--motion-ease),
-    background var(--motion-duration) var(--motion-ease);
+  transition: all var(--motion-duration) var(--motion-ease);
 }
 
 .login-input :deep(.el-input__wrapper:hover) {
