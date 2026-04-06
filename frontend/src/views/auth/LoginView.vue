@@ -9,55 +9,43 @@
     <footer class="login-footer">
       <span class="login-footer-text">安全认证 · 智能识别</span>
     </footer>
-    <div
-      class="login-panel"
-      @mouseenter="onCardHover"
-      @click="onCardHover"
-    >
-      <div class="flip-container">
-        <div class="flip-inner" :class="{ 'is-flipped': hasFlipped }">
-          <div class="flip-front login-card">
-            <div class="card-header card-header--front">
-              <span class="card-title">登录</span>
-            </div>
-          </div>
-          <div class="flip-back login-card">
-            <div class="card-header">
-              <span class="card-title">登录</span>
-            </div>
-            <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" label-width="0px" class="login-form">
-              <el-form-item prop="username" class="form-item">
-                <el-input
-                  v-model="loginForm.username"
-                  placeholder="用户名"
-                  prefix-icon="User"
-                  size="large"
-                  class="login-input"
-                />
-              </el-form-item>
-              <el-form-item prop="password" class="form-item">
-                <el-input
-                  type="password"
-                  v-model="loginForm.password"
-                  placeholder="密码"
-                  prefix-icon="Lock"
-                  show-password
-                  size="large"
-                  class="login-input"
-                />
-              </el-form-item>
-              <el-form-item class="form-item form-item-submit">
-                <el-button type="primary" @click="submitForm" class="login-button" size="large">
-                  登录
-                </el-button>
-              </el-form-item>
-              <div class="register-hint">
-                <span>没有账户？</span>
-                <router-link to="/register" class="register-link">注册一个</router-link>
-              </div>
-            </el-form>
-          </div>
+    <div class="login-panel">
+      <div class="login-card">
+        <div class="card-header">
+          <span class="card-title">账户登录</span>
+          <span class="card-subtitle">欢迎回来，请登录您的账户</span>
         </div>
+        <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" label-width="0px" class="login-form">
+          <el-form-item prop="username" class="form-item">
+            <el-input
+              v-model="loginForm.username"
+              placeholder="用户名"
+              prefix-icon="User"
+              size="large"
+              class="login-input"
+            />
+          </el-form-item>
+          <el-form-item prop="password" class="form-item">
+            <el-input
+              type="password"
+              v-model="loginForm.password"
+              placeholder="密码"
+              prefix-icon="Lock"
+              show-password
+              size="large"
+              class="login-input"
+            />
+          </el-form-item>
+          <el-form-item class="form-item form-item-submit">
+            <el-button type="primary" @click="submitForm" class="login-button" size="large">
+              验证并登录
+            </el-button>
+          </el-form-item>
+          <div class="register-hint">
+            <span>没有账户？</span>
+            <router-link to="/register" class="register-link">立即注册</router-link>
+          </div>
+        </el-form>
       </div>
     </div>
   </div>
@@ -71,11 +59,6 @@ import { login as authLogin } from '../../services/modules/auth';
 
 const router = useRouter();
 const loginFormRef = ref(null);
-const hasFlipped = ref(false);
-
-function onCardHover() {
-  if (!hasFlipped.value) hasFlipped.value = true;
-}
 
 const loginForm = reactive({
   username: '',
@@ -266,45 +249,9 @@ const submitForm = () => {
   cursor: pointer;
 }
 
-/* 翻转容器：悬停时前后平滑翻转，仅一次 */
-.flip-container {
-  width: 100%;
-  perspective: 1000px;
-  /* min-height: 360px; */
-}
-
-.flip-inner {
-  position: relative;
-  width: 100%;
-  /* min-height: 360px; */
-  transform-style: preserve-3d;
-  transition: transform 0.65s cubic-bezier(0.4, 0, 0.2, 1);
-   display: grid;
-   grid-area: 1/1/1/1;
-}
-
-.flip-inner.is-flipped {
-  transform: rotateY(180deg);
-}
-
-.flip-front,
-.flip-back {
-  position: absolute;
-  /* inset: 0; */
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  border-radius: 20px;
-  width: 100%; /* 确保宽度占满 */
-}
-
-.flip-back {
-  transform: rotateY(180deg);
-}
-
 .login-card {
   width: 100%;
-  /* height: 100%; */
-  min-height: 360px;
+  min-height: 380px;
   position: relative;
   border-radius: 20px;
   overflow: hidden;
@@ -325,20 +272,8 @@ const submitForm = () => {
 
 .card-header {
   text-align: center;
-  padding: 28px 32px 20px;
+  padding: 36px 32px 20px;
   margin-bottom: 8px;
-  border-bottom: 1px solid var(--card-border);
-}
-
-.card-header--front {
-  margin-bottom: 0;
-  padding-bottom: 28px;
-  border-bottom: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100%;
-  box-sizing: border-box;
 }
 
 .card-title {
@@ -471,9 +406,6 @@ const submitForm = () => {
   }
   .login-wrapper::before {
     animation: none;
-  }
-  .flip-inner {
-    transition-duration: 0.01ms;
   }
   .login-card,
   .login-button,

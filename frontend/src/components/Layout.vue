@@ -34,15 +34,17 @@
       <div class="flex-grow"></div>
       
       <!-- 底部设置图标 -->
-      <router-link :to="profileNavItem.path"
+      <a href="#" @click.prevent="router.push('/profile')"
          class="group relative flex items-center h-14 rounded-xl transition-all duration-300 hover:bg-orange-50 hover:scale-110"
-         :class="isNavExpanded ? 'justify-start pl-4 pr-2 w-56' : 'justify-center w-14'"
-         active-class="is-active">
-        <el-icon :size="26" class="text-slate-400 transition-colors group-hover:text-orange-500" :class="{ 'text-orange-500': $route.path === profileNavItem.path }"><component :is="profileNavItem.icon" /></el-icon>
-        <span v-show="isNavExpanded" class="ml-4 text-slate-600 text-lg font-medium whitespace-nowrap overflow-hidden transition-opacity duration-200" :class="{ 'opacity-100': isNavExpanded, 'opacity-0': !isNavExpanded }">{{ profileNavItem.label }}</span>
+         :class="[isNavExpanded ? 'justify-start pl-4 pr-2 w-56' : 'justify-center w-14', { 'bg-orange-50': $route.path === '/profile' }]"
+         :title="profileNavItem.label">
+        <el-icon :size="26" class="text-slate-400 transition-colors group-hover:text-orange-500" :class="{ 'text-orange-500': $route.path === '/profile' }">
+          <Setting />
+        </el-icon>
+        <span v-show="isNavExpanded" class="ml-4 text-slate-600 text-lg font-medium whitespace-nowrap overflow-hidden transition-opacity duration-200" :class="{ 'opacity-100': isNavExpanded, 'opacity-0': !isNavExpanded }">设置</span>
         <div class="absolute inset-0 rounded-xl bg-orange-400 opacity-0 group-hover:opacity-10 blur-md transition-opacity duration-300" :class="{ 'opacity-10': $route.path === '/profile' }"></div>
         <div v-show="$route.path === '/profile'" class="absolute -left-3 top-1/2 -translate-y-1/2 w-1 h-6 bg-orange-500 rounded-r-full shadow-[0_0_10px_rgba(249,115,22,0.8)]"></div>
-      </router-link>
+      </a>
       <!-- 退出登录 -->
       <a href="#" @click.prevent="logout"
          class="group relative flex items-center h-14 rounded-xl transition-all duration-300 hover:bg-red-50 hover:scale-110"

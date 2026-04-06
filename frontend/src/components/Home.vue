@@ -127,6 +127,7 @@
 <script setup>
 import { shallowRef, ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { getRecognitionRecords } from '@/services/modules/recognition.js';
 import * as echarts from 'echarts';
 import {
   Monitor,
@@ -164,7 +165,73 @@ const handleMouseLeave = () => {
   glowStyle.value = {}; // Reset glow on mouse leave
 };
 
+const fetchRecentRecords = async () => {
+  try {
+    // 这里的请求不带分页限制，以便统计 KPI，或者可以根据业务需要再发一个统计接口
+    const res = await getRecognitionRecords();
+    const data = res?.data || res;
+    
+    if (data && Array.isArray(data)) {
+      // 1. 更新最近识别记录 (取前3条)
+      recentRecords.value = data.slice(0, 3).map(record => ({
+        avatar: toAbsoluteUrl(record.imagePath) || 'https://cube.elemecdn.com/0/88/03b0dff330f245542281691515e9c.jpeg',
+        name: record.recognitionResult || '未知个体',
+        id: `REC-${record.id}`,
+        type: record.type === 'human' ? '人脸识别' : '非人识别',
+        time: formatRelativeTime(record.recognitionTime),
+        device: record.operationStatus || '边缘计算节点 Alpha',
+        rawId: record.id
+      }));
+
+      // 2. 统计并更新 KPI 盒子
+      // 识别总量
+      const total = data.length;
+      kpis.value[0].value = total.toLocaleString();
+
+      // 活跃用户 (去重 operatorName)
+      const users = new Set(data.map(r => r.operatorName).filter(Boolean));
+      kpis.value[1].value = users.size.toLocaleString();
+
+      // 异常拦截 (比如置信度低于 0.7 的记录，或者根据业务状态统计)
+      const anomalies = data.filter(r => r.confidence < 0.7).length;
+      kpis.value[2].value = anomalies.toLocaleString();
+
+      // 系统准确率 (平均置信度)
+      const avgConfidence = data.reduce((acc, r) => acc + (r.confidence || 0), 0) / (total || 1);
+      kpis.value[3].value = (avgConfidence * 100).toFixed(1) + '%';
+    }
+  } catch (error) {
+    console.error('Failed to fetch recent records:', error);
+  }
+};
+
+const toAbsoluteUrl = (maybePath) => {
+  if (!maybePath) return null;
+  if (/^https?:\/\//i.test(maybePath)) return maybePath;
+  const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+  const origin = apiBase.replace(/\/api\/?$/, '');
+  if (maybePath.startsWith('/')) return origin + maybePath;
+  return origin + '/' + maybePath;
+};
+
+const formatRelativeTime = (isoStr) => {
+  if (!isoStr) return '-';
+  const now = new Date();
+  const date = new Date(isoStr);
+  const diff = now - date;
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) return `${days}天前`;
+  if (hours > 0) return `${hours}小时前`;
+  if (minutes > 0) return `${minutes}分钟前`;
+  return '刚刚';
+};
+
 onMounted(() => {
+  fetchRecentRecords();
   if (startButton.value) {
     startButton.value.addEventListener('mousemove', handleMouseMove);
     startButton.value.addEventListener('mouseleave', handleMouseLeave);
@@ -178,13 +245,13 @@ onUnmounted(() => {
   }
 });
 
-// KPI 数据
-const kpis = [
+// KPI 数据 (初始化 mock 数据)
+const kpis = ref([
   { title: '识别总量', value: '8,432', trend: '+12.5%', trendIcon: CaretTop, icon: Monitor, bgClass: 'bg-white/60 backdrop-blur-md border border-white/50 shadow-soft-blue', iconBg: 'bg-orange-50', iconColor: 'text-orange-500', trendClass: 'text-emerald-600' },
   { title: '活跃用户', value: '1,204', trend: '+5.2%', trendIcon: CaretTop, icon: User, bgClass: 'bg-white/60 backdrop-blur-md border border-white/50 shadow-soft-blue', iconBg: 'bg-blue-50', iconColor: 'text-blue-500', trendClass: 'text-emerald-600' },
   { title: '异常拦截', value: '42', trend: '-18.1%', trendIcon: CaretBottom, icon: Warning, bgClass: 'bg-white/60 backdrop-blur-md border border-white/50 shadow-soft-blue', iconBg: 'bg-red-50', iconColor: 'text-red-500', trendClass: 'text-red-600' },
   { title: '系统准确率', value: '98.7%', trend: '+0.4%', trendIcon: CaretTop, icon: TrendCharts, bgClass: 'bg-gradient-to-br from-orange-500/90 to-orange-500/10 backdrop-blur-md shadow-soft-blue border border-white/50', iconBg: 'bg-orange-50', iconColor: 'text-orange-500', trendClass: 'text-emerald-600' },
-];
+]);
 
 // 图表数据
 const categories = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
@@ -212,11 +279,7 @@ onMounted(() => {
 });
 
 // 最近记录数据
-const recentRecords = ref([
-  { avatar: 'https://cube.elemecdn.com/0/88/03b0dff330f245542281691515e9c.jpeg', name: 'Alena Smith', id: 'USR-001', type: '人脸识别', time: '10分钟前', device: '入口闸机 Alpha' },
-  { avatar: 'https://cube.elemecdn.com/0/88/03b0dff330f245542281691515e9c.jpeg', name: 'John Doe', id: 'USR-082', type: '指纹识别', time: '25分钟前', device: '财务室门禁' },
-  { avatar: 'https://cube.elemecdn.com/0/88/03b0dff330f245542281691515e9c.jpeg', name: 'Alice Wang', id: 'USR-124', type: '人脸识别', time: '1小时前', device: '主会议室' },
-]);
+const recentRecords = ref([]);
 </script>
 
 <style scoped>

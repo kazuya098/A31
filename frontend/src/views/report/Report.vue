@@ -1,27 +1,24 @@
 <template>
   <div class="report-outer-wrapper py-10 bg-gray-100 min-h-screen" v-loading="loading">
-    <!-- Exit Report button — top left -->
-    <div class="fixed left-6 top-6 z-50">
-      <el-button
-        size="large"
-        @click="goBack"
-        class="exit-btn-fixed shadow-lg flex items-center gap-2 rounded-2xl border-none"
-      >
-        <el-icon :size="20"><ArrowLeft /></el-icon>
-        <span class="text-sm font-bold">退出报告</span>
-      </el-button>
-    </div>
 
-    <!-- Download PDF button — right side -->
-    <div v-if="reportData" class="fixed right-10 z-50" style="top: 50%; transform: translateY(-50%)">
+
+    <!-- Floating Action Panel — right side -->
+    <div v-if="reportData" class="fixed right-12 z-50 flex flex-col gap-4 items-center" style="top: 50%; transform: translateY(-50%)">
       <el-button
-        size="large"
         @click="downloadPDF"
         :loading="downloading"
-        class="download-btn-fixed shadow-2xl flex flex-col items-center justify-center h-24 w-24 rounded-2xl hover:scale-110 transition-transform border-none"
+        class="download-btn-rect shadow-2xl flex items-center justify-center w-48 h-14 rounded-xl hover:scale-105 transition-transform border-none"
       >
-        <el-icon :size="28" class="mb-1"><Download /></el-icon>
-        <span class="text-xs font-bold">下载报告</span>
+        <el-icon :size="20" class="mr-2"><Download /></el-icon>
+        <span class="text-sm font-bold">下载 PDF 报告</span>
+      </el-button>
+
+      <el-button
+        @click="goBack"
+        class="back-btn-rect shadow-xl flex items-center justify-center w-48 h-14 rounded-xl hover:scale-105 transition-transform border-none"
+      >
+        <el-icon :size="20" class="mr-2"><ArrowLeft /></el-icon>
+        <span class="text-sm font-bold">返回记录列表</span>
       </el-button>
     </div>
 
@@ -48,13 +45,13 @@
         <div class="descriptions-wrapper">
           <el-descriptions :column="2" border>
             <el-descriptions-item label="认定身份" label-class-name="pdf-label">
-              <span class="font-bold text-gray-800">{{ reportData.recognitionResult || reportData.result?.individualId || '未知个体' }}</span>
+              <span class="font-bold text-gray-800">{{ reportData.recognitionResult || '未知个体' }}</span>
             </el-descriptions-item>
             <el-descriptions-item label="置信系数" label-class-name="pdf-label">
-              <span class="text-orange-600 font-bold text-lg">{{ reportData.result?.confidence ? (reportData.result.confidence * 100).toFixed(2) + '%' : '-' }}</span>
+              <span class="text-orange-600 font-bold text-lg">{{ reportData.confidence ? (reportData.confidence * 100).toFixed(2) + '%' : '-' }}</span>
             </el-descriptions-item>
             <el-descriptions-item label="操作员" label-class-name="pdf-label">
-              {{ reportData.operatorName || reportData.operator || '-' }}
+              {{ reportData.operatorName || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="分析模块" label-class-name="pdf-label">
               跨时域深度识别核心 2.0
@@ -93,7 +90,7 @@
       <section class="report-section mb-12">
         <h2 class="section-title mb-6">分析结论</h2>
         <div class="analysis-content p-8 bg-white border border-gray-100 rounded leading-relaxed text-gray-700 text-sm italic shadow-inner" style="white-space: pre-line;">
-          {{ reportData.details || reportData.analysisDetails || '系统正在对特征偏移量、光影噪声及跨时域衰减系数进行二次拟合。初步结论：生物特征匹配极度稳定。' }}
+          {{ reportData.analysisDetails || '系统正在对特征偏移量、光影噪声及跨时域衰减系数进行二次拟合。初步结论：生物特征匹配极度稳定。' }}
         </div>
       </section>
       
@@ -174,15 +171,25 @@ const toAbsoluteUrl = (maybePath) => {
 
 const generateMockReport = (id) => {
   return {
-    id: id || 'RPT-2026-XQ01',
+    recordId: id || 123,
+    recognitionResult: "人类 (person_001)",
+    imagePath: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=640&auto=format&fit=crop",
+    heatmapPath: null,
     recognitionTime: new Date().toLocaleString(),
-    operator: '系统管理员 (Admin)',
-    result: {
-      individualId: 'USR-1092',
-      confidence: 0.985,
-      imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=640&auto=format&fit=crop'
-    },
-    details: '基于深度卷积网络（DCNN）的模型分析显示，当前采集的人脸特征与库中登记的样本具有极高的一致性。\n\n1. 特征点匹配率：98.2%\n2. 面部拓扑结构偏移量：< 0.12mm\n3. 活体检测：成功通过\n\n综上所述，该个体的身份识别结果极其明确。'
+    operatorName: "系统管理员 (Admin)",
+    type: "human",
+    operationStatus: "正常",
+    confidence: 0.985,
+    shotTime: "2024-03-20",
+    analysisDetails: "基于深度卷积网络（DCNN）的模型分析显示，当前采集的人脸特征与库中登记的样本具有极高的一致性。\n\n1. 特征点匹配率：98.2%\n2. 面部拓扑结构偏移量：< 0.12mm\n3. 活体检测：成功通过\n\n综上所述，该个体的身份识别结果极其明确。",
+    relatedImages: [
+      {
+        imageId: 100,
+        imagePath: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=640&auto=format&fit=crop",
+        shotTime: "2024-03-15",
+        recordId: 80
+      }
+    ]
   };
 };
 
@@ -340,31 +347,29 @@ const currentDateTime = computed(() => {
   }
 }
 
-/* Exit button */
-.exit-btn-fixed {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(10px);
-  color: #374151;
-  transition: background 0.2s, transform 0.2s;
-}
-
-.exit-btn-fixed:hover {
-  background: #f3f4f6;
-  transform: translateX(-2px);
-}
-
-/* Download button — green gradient, white text */
-.download-btn-fixed {
-  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
+/* Floating buttons on the right side */
+.download-btn-rect {
+  background: linear-gradient(135deg, #f97316, #ea580c) !important;
   color: #ffffff !important;
 }
 
-.download-btn-fixed:hover {
-  background: linear-gradient(135deg, #16a34a, #15803d) !important;
+.download-btn-rect:hover {
+  background: linear-gradient(135deg, #ea580c, #c2410c) !important;
+}
+
+/* Back button — slate gradient */
+.back-btn-rect {
+  background: linear-gradient(135deg, #64748b, #475569) !important;
   color: #ffffff !important;
 }
 
-.download-btn-fixed :deep(.el-icon),
-.download-btn-fixed :deep(span) {
+.back-btn-rect:hover {
+  background: linear-gradient(135deg, #475569, #334155) !important;
+}
+
+.download-btn-rect :deep(.el-icon),
+.download-btn-rect :deep(span),
+.back-btn-rect :deep(.el-icon),
+.back-btn-rect :deep(span) {
   color: #ffffff !important;
-}</style>
+} </style>

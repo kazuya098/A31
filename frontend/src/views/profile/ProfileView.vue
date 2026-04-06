@@ -9,13 +9,8 @@
         <p class="text-gray-500 text-lg">管理您的账户信息与安全配置</p>
       </div>
       <div class="flex items-center space-x-6">
-        <!-- Notification Icon -->
-        <button class="relative text-gray-600 hover:text-orange-600 transition-colors duration-200">
-          <span class="text-2xl">🔔</span> <!-- Notification Bell Icon -->
-          <span class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">3</span>
-        </button>
         <!-- Logout Button -->
-        <button class="bg-gray-900 text-white px-8 py-3 rounded-full text-sm font-medium transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-gray-900/20 active:translate-y-0 active:shadow-inner flex items-center">
+        <button @click="handleLogout" class="bg-gray-900 text-white px-8 py-3 rounded-full text-sm font-medium transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-gray-900/20 active:translate-y-0 active:shadow-inner flex items-center">
           退出登录
         </button>
       </div>
@@ -58,8 +53,8 @@
                 <!-- User Information (Right) -->
                 <div class="flex-grow space-y-6">
                   <div class="bg-white p-4 rounded-lg shadow-sm">
-                    <div class="flex items-center mb-2">
-                      <label class="w-28 text-lg text-gray-600 font-medium">用户名:</label>
+                    <div class="flex items-center mb-0">
+                      <label class="w-32 text-lg text-gray-600 font-medium">用户名:</label>
                       <input v-if="isEditing" v-model="tempUser.username" class="flex-grow border border-gray-200 rounded-lg px-4 py-2 text-lg focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white/60" />
                       <span v-else class="flex-grow text-lg font-semibold text-gray-800">{{ currentUser.username }}</span>
                     </div>
@@ -133,9 +128,9 @@
                 <template v-else>
                   <button @click="saveUserChanges"
                     @mousemove="handleSaveButtonMouseMove" @mouseleave="handleSaveButtonMouseLeave"
-                    class="cta-btn-enter relative isolate overflow-hidden group px-10 py-4 mb-4 rounded-full text-white text-lg font-medium transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 shadow-lg shadow-emerald-500/30 mr-4">
-                    <span class="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-600 transition-transform duration-300 ease-out group-hover:scale-105"></span>
-                    <span class="absolute -inset-px rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-teal-500 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                    class="cta-btn-enter relative isolate overflow-hidden group px-10 py-4 mb-4 rounded-full text-white text-lg font-medium transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 shadow-lg shadow-orange-500/30 mr-4">
+                    <span class="absolute inset-0 bg-gradient-to-r from-orange-500 to-red-600 transition-transform duration-300 ease-out group-hover:scale-105"></span>
+                    <span class="absolute -inset-px rounded-full bg-gradient-to-r from-orange-400 via-pink-400 to-purple-500 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
                           :style="saveGlowStyle"></span>
                     <span class="relative z-10 flex items-center justify-center">
                       <span>保存更改</span>
@@ -147,9 +142,9 @@
                   </button>
                   <button @click="resetUserChanges"
                     @mousemove="handleCancelButtonMouseMove" @mouseleave="handleCancelButtonMouseLeave"
-                    class="cta-btn-enter relative isolate overflow-hidden group px-10 py-4 mb-4 rounded-full text-white text-lg font-medium transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 shadow-lg shadow-slate-500/20">
-                    <span class="absolute inset-0 bg-gradient-to-r from-slate-500 to-slate-600 transition-transform duration-300 ease-out group-hover:scale-105"></span>
-                    <span class="absolute -inset-px rounded-full bg-gradient-to-r from-slate-400 via-gray-400 to-slate-500 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                    class="cta-btn-enter relative isolate overflow-hidden group px-10 py-4 mb-4 rounded-full text-gray-600 text-lg font-medium transition-all duration-300 ease-out focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 shadow-lg shadow-gray-200/50">
+                    <span class="absolute inset-0 bg-gradient-to-r from-gray-100 to-gray-200 transition-transform duration-300 ease-out group-hover:scale-105"></span>
+                    <span class="absolute -inset-px rounded-full bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
                           :style="cancelGlowStyle"></span>
                     <span class="relative z-10 flex items-center justify-center">
                       <span>取消重置</span>
@@ -393,14 +388,15 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { ArrowRight } from '@element-plus/icons-vue';
-import { restoreData } from '@/services/modules/user.js';
+import { restoreData, getUserProfile, updatePassword } from '@/services/modules/user.js';
+import { logout } from '@/services/modules/auth.js';
 import { ElMessageBox, ElMessage } from 'element-plus';
+import { useRouter } from 'vue-router';
 
 const navItemsData = [
             { id: 'user-info', label: '用户信息', icon: '👤', content: '', badge: '去完成资料' },
             { id: 'account-security', label: '账号安全', icon: '🛡️', content: '这是账号安全页面的详细内容。', badge: '高风险' },
             { id: 'data-management', label: '数据管理', icon: '🗄️', content: '这是数据管理页面的详细内容。' },
-            { id: 'log-audit', label: '日志审计', icon: '📜', content: '这是日志审计页面的详细内容。' },
 ];
 
 const activeTabId = ref(navItemsData[0].id); // 默认激活第一个
@@ -418,25 +414,64 @@ const inactiveTabs = computed(() => {
   return navItemsData.filter(item => item.id !== activeTabId.value);
 });
 
+const router = useRouter();
+
 // 用户信息模块逻辑
 const currentUser = ref({
-  image: 'https://i.pravatar.cc/150', // Updated for a more "clear and friendly" look
-  username: 'TestUser',
-    permission: '管理员',
-    userId: 'A312023001',
-    email: 'test.user@email.com',
-    phone: '138xxxx1234',
-    joinDate: '2023-10-26',
-  });
+  image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=user_profile', 
+  username: '----',
+  permission: 'USER',
+  userId: '-',
+  email: 'Not specified',
+  phone: 'Not specified',
+  joinDate: new Date().toISOString().split('T')[0],
+});
 
-  const lastUpdateTime = ref(new Date().toLocaleString()); // 新增：数据更新时间戳
+const fetchUserProfile = async () => {
+  try {
+    const res = await getUserProfile();
+    const data = res?.data || res;
+    if (data) {
+      currentUser.value = {
+        ...currentUser.value, // Keep existing avatar/joinDate if missing in API
+        userId: data.id,
+        username: data.username,
+        permission: data.role === 'ADMIN' ? '管理员' : '普通用户',
+        // Optional placeholder values for missing backend fields
+        email: data.username + '@email.com',
+      };
+      
+      tempUser.value = { ...currentUser.value };
+      lastUpdateTime.value = new Date().toLocaleString();
+    }
+  } catch (error) {
+    console.error('Failed to fetch profile', error);
+  }
+};
 
-  const tempUser = ref({
-    username: currentUser.value.username,
-    permission: currentUser.value.permission,
-    email: currentUser.value.email,
-    phone: currentUser.value.phone,
-  });
+onMounted(() => {
+  fetchUserProfile();
+});
+
+const lastUpdateTime = ref(new Date().toLocaleString()); // 新增：数据更新时间戳
+
+const tempUser = ref({
+  username: currentUser.value.username,
+  permission: currentUser.value.permission,
+  email: currentUser.value.email,
+  phone: currentUser.value.phone,
+});
+
+const handleLogout = async () => {
+  try {
+    await logout();
+  } catch (e) {
+    // Ignore error, force redirect
+  }
+  localStorage.removeItem('X-Auth-Token');
+  ElMessage.success('已退出登录');
+  router.push('/login');
+};
 const isEditing = ref(false);
 const glowStyle = ref({});
 const saveGlowStyle = ref({});
@@ -572,7 +607,7 @@ const startEdit = () => {
     };
 
     // 处理密码修改
-    const handlePasswordChange = () => {
+    const handlePasswordChange = async () => {
       // 清空之前的错误信息
       passwordErrors.value = {
         oldPassword: '',
@@ -610,12 +645,19 @@ const startEdit = () => {
         return; // 如果有错误，停止提交
       }
 
-      // 模拟密码修改成功
-      alert('密码修改成功！');
-      // 清空表单
-      passwordForm.value.oldPassword = '';
-      passwordForm.value.newPassword = '';
-      passwordForm.value.confirmNewPassword = '';
+      // API Call
+      try {
+        await updatePassword({
+          oldPassword: passwordForm.value.oldPassword,
+          newPassword: passwordForm.value.newPassword
+        });
+        ElMessage.success('密码修改成功！');
+        
+        // 清空表单
+        resetPasswordForm();
+      } catch (e) {
+        ElMessage.error(e.message || '原密码错误或修改失败');
+      }
     };
 
     const resetPasswordForm = () => {

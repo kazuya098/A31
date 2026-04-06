@@ -57,7 +57,7 @@
                 >
                   <el-icon class="mr-2"><Plus /></el-icon> 选择图像文件
                 </el-button>
-                <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="handleFileChange">
+                <input type="file" ref="fileInput" class="hidden" accept="image/*" multiple @change="handleFileChange">
               </div>
 
               <div class="mt-12 flex items-center gap-8 opacity-40">
@@ -301,6 +301,7 @@ const fileInput = ref(null);
 const showHeatmap = ref(false);
 const result = ref(null);
 const heatmapUrl = ref(null);
+const recognitionType = ref('human');
 
 const currentStep = computed(() => {
   if (progress.value < 20) return 0;
@@ -320,7 +321,9 @@ const openFileDialog = () => {
 
 const handleFileChange = (e) => {
   const files = Array.from(e.target.files);
-  if (files.length > 0) {
+  if (files.length > 1) {
+    startBatchProcess(files);
+  } else if (files.length === 1) {
     startProcess(files[0]);
   }
 };
@@ -328,7 +331,9 @@ const handleFileChange = (e) => {
 const handleDrop = (e) => {
   dragOver.value = false;
   const files = Array.from(e.dataTransfer.files);
-  if (files.length > 0) {
+  if (files.length > 1) {
+    startBatchProcess(files);
+  } else if (files.length === 1) {
     startProcess(files[0]);
   }
 };

@@ -51,3 +51,11 @@ export function getIndividualReport(individualId) {
     method: 'get',
   });
 }
+
+export function deleteRecognitionRecord(id) {
+  return service({
+    url: `/recognition/records/${id}`,
+    method: 'delete',
+  });
+}
+

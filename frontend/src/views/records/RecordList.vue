@@ -134,6 +134,30 @@
               </div>
             </template>
           </el-table-column>
+          <el-table-column label="操作" width="160" align="center">
+            <template #default="scope">
+              <div class="flex items-center justify-center gap-2">
+                <el-button 
+                  type="primary" 
+                  size="small" 
+                  circle 
+                  plain
+                  :icon="Document"
+                  @click="goReport(scope.row)"
+                  title="查看报告"
+                />
+                <el-button 
+                  type="danger" 
+                  size="small" 
+                  circle 
+                  plain
+                  :icon="Delete"
+                  @click="handleDelete(scope.row)"
+                  title="删除记录"
+                />
+              </div>
+            </template>
+          </el-table-column>
         </el-table>
 
         <!-- 分页 -->
@@ -157,8 +181,9 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Search, Refresh, Clock, User } from '@element-plus/icons-vue';
-import { getRecognitionRecords } from '@/services/modules/recognition.js';
+import { Search, Refresh, Clock, User, Delete, Document } from '@element-plus/icons-vue';
+import { getRecognitionRecords, deleteRecognitionRecord } from '@/services/modules/recognition.js';
+import { ElMessageBox, ElMessage } from 'element-plus';
 
 const router = useRouter();
 
@@ -277,6 +302,46 @@ const generateMockData = () => {
     });
   }
   return data;
+};
+
+// 跳转到报告详情
+const goReport = (row) => {
+  router.push(`/report/${row.id}`);
+};
+
+// 删除记录
+const handleDelete = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除记录 #${row.id} 吗？此操作不可撤销。`,
+      '警告',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger',
+      }
+    );
+    
+    loading.value = true;
+    const res = await deleteRecognitionRecord(row.id);
+    if (res.code === 200) {
+      ElMessage.success('记录删除成功');
+      // 如果后端没挂，这里应该重新加载。如果由于是mock模式或者后端问题抛错，就在catch里提示。
+      await fetchRecords(); 
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('Failed to delete record:', error);
+      // 如果报错是因为接口不存在（如本地开发中），则提示。
+      ElMessage.error(error.message || '删除失败');
+      
+      // 这里的逻辑可以改为：即便API报错，但在演示环境下我们也从数组里移除（演示需要）。
+      // records.value = records.value.filter(r => r.id !== row.id); 
+    }
+  } finally {
+    loading.value = false;
+  }
 };
 
 onMounted(() => {

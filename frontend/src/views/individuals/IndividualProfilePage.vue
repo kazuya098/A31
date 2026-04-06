@@ -137,7 +137,7 @@
               <!-- Cover image -->
               <div class="relative shrink-0">
                 <img
-                  :src="details.images[0]?.url || '/examples/mandrill_1.jpg'"
+                  :src="details.coverImage || details.images[0]?.url || '/examples/mandrill_1.jpg'"
                   class="w-28 h-28 rounded-[1.5rem] object-cover shadow-lg ring-4 ring-white/80 bg-gray-100"
                   @error="(e) => e.target.src = '/examples/mandrill_1.jpg'"
                 />
@@ -302,7 +302,7 @@ const selectIndividual = async (id) => {
         url: toAbsoluteUrl(img.imagePath),
         captureTime: img.shotTime ? new Date(img.shotTime).toISOString() : null,
         confidence: 0.95,
-        recordId: img.recognitionRecordId,
+        recordId: img.recordId,
       })).sort((a, b) => {
         if (!a.captureTime) return 1;
         if (!b.captureTime) return -1;
@@ -312,9 +312,10 @@ const selectIndividual = async (id) => {
       const validTimes = images.filter(i => i.captureTime).map(i => new Date(i.captureTime));
       details.value = {
         id: data.individualId,
-        totalCount: images.length,
-        firstSeen: validTimes.length ? new Date(Math.min(...validTimes)).toISOString() : null,
-        lastSeen: validTimes.length ? new Date(Math.max(...validTimes)).toISOString() : null,
+        coverImage: toAbsoluteUrl(data.coverImagePath),
+        totalCount: data.totalImages || images.length,
+        firstSeen: data.firstSeenDate ? new Date(data.firstSeenDate).toISOString() : (validTimes.length ? new Date(Math.min(...validTimes)).toISOString() : null),
+        lastSeen: data.lastSeenDate ? new Date(data.lastSeenDate).toISOString() : (validTimes.length ? new Date(Math.max(...validTimes)).toISOString() : null),
         images,
       };
     }

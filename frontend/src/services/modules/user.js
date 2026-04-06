@@ -1,15 +1,15 @@
 import service from '../api';
 
-export function getUserInfo() {
+export function getUserProfile() {
   return service({
-    url: '/user/info',
+    url: '/user/profile',
     method: 'get',
   });
 }
 
-export function updateUserInfo(data) {
+export function updatePassword(data) {
   return service({
-    url: '/user/update',
+    url: '/user/password',
     method: 'put',
     data,
   });
@@ -21,3 +21,4 @@ export function restoreData() {
     method: 'post',
   });
 }
+

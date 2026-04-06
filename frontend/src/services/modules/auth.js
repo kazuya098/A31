@@ -15,3 +15,11 @@ export function register(data) {
     data,
   });
 }
+
+export function logout() {
+  return service({
+    url: '/auth/logout',
+    method: 'post',
+  });
+}
+
