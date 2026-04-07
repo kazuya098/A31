@@ -36,6 +36,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.time.Duration;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
@@ -53,6 +54,7 @@ public class RecognitionService {
     private final UserMapper userMapper;
     private final AlgorithmClientService algorithmClient;
     private final WebClient webClient;
+    private final ObjectMapper objectMapper;
 
     @Value("${upload.path:./uploads}")
     private String uploadPath;
@@ -62,6 +64,9 @@ public class RecognitionService {
 
     @Value("${algorithm.service.timeout-seconds:30}")
     private int timeoutSeconds;
+
+    @Value("${algorithm.mock.enabled:false}")
+    private boolean mockEnabled;
 
     private Path uploadDirAbsolute() {
         return Paths.get(uploadPath).toAbsolutePath().normalize();
@@ -78,8 +83,9 @@ public class RecognitionService {
         }
         // 提取文件名
         String filename = Paths.get(localPath).getFileName().toString();
-        // 返回相对 URL 路径，前端拼接后端域名即可访问
-        return "/static/uploads/" + filename;
+        // 必须以 /api/ 开头，前端 toAbsoluteUrl 会把 /api 后缀从 backendOrigin 中剥离，
+        // 使得图片 URL 通过 Vite 代理（/api → localhost:8080）正确转发到后端资源处理器。
+        return "/api/uploads/" + filename;
     }
 
 
@@ -120,8 +126,19 @@ public class RecognitionService {
         record.setOperationStatus("正常"); // 设置默认操作状态
         recordMapper.insert(record);
 
-        // ====== 2. 调用算法服务进行识别（使用 WebClient，支持 gallery_images 解析）======
-        AlgorithmClientService.AlgorithmResult algoResult = callAlgorithmWithWebClient(fileBytes, originalFilename, contentType, record.getId());
+        // ====== 2. 调用算法服务进行识别（mock 模式下跳过算法调用）======
+        AlgorithmClientService.AlgorithmResult algoResult =
+                mockEnabled ? null : callAlgorithmWithWebClient(fileBytes, originalFilename, contentType, record.getId());
+
+        // 算法不可用时降级为 mock（演示模式）
+        if (algoResult == null && mockEnabled) {
+            algoResult = AlgorithmClientService.AlgorithmResult.builder()
+                    .identityId("demo_mandrill_001")
+                    .confidence(0.862)
+                    .relatedImages(Collections.emptyList())
+                    .build();
+            log.info("算法不可用，使用演示结果: identityId=demo_mandrill_001, confidence=0.862");
+        }
 
         if (algoResult != null) {
             // 识别成功
@@ -244,6 +261,24 @@ public class RecognitionService {
         }
     }
 
+    /**
+     * 删除单条识别记录及其关联的 individual_image 行。
+     * 不删除 individual 本身，避免破坏已归档的个体档案。
+     */
+    public void deleteRecord(Long id) {
+        individualImageMapper.deleteByRecordId(id);
+        recordMapper.deleteById(id);
+    }
+
+    /**
+     * 清空所有识别记录与个体图片（仅用于测试数据清理）。
+     * 严格不删除 individual 表，保留已建立的个体档案结构。
+     */
+    public void purgeTestData() {
+        individualImageMapper.deleteAll();
+        recordMapper.deleteAll();
+        log.info("Test data purged: individual_image and recognition_record cleared.");
+    }
 
     private String saveFile(MultipartFile file) {
         Path target = null;
@@ -368,6 +403,7 @@ public class RecognitionService {
                     .type(r.getType())
                     .confidence(r.getConfidence())
                     .status(r.getStatus())
+                    .imagePath(toAccessibleUrl(r.getImagePath()))
                     .build();
         }).collect(Collectors.toList());
     }
@@ -789,16 +825,42 @@ public class RecognitionService {
             String type,
             Long operatorId,
             String[] imageIds,
-            String[] shotTimes) {
+            String[] shotTimes,
+            String metadataJson) {
 
+        // ── 1. 构建每张图的元数据列表 ───────────────────────────────────────
         List<BatchImageMetadata> metaList = new ArrayList<>();
-        for (int i = 0; i < files.length; i++) {
+
+        // 1a. 优先解析 metadataJson（前端可传 JSON 数组，每元素含 image_id / shot_time）
+        if (metadataJson != null && !metadataJson.isBlank()) {
+            try {
+                List<BatchImageMetadata> parsed = objectMapper.readValue(
+                        metadataJson,
+                        objectMapper.getTypeFactory().constructCollectionType(List.class, BatchImageMetadata.class));
+                metaList.addAll(parsed);
+            } catch (Exception e) {
+                log.warn("metadataJson 解析失败，回退到 imageIds/shotTimes 参数: {}", e.getMessage());
+            }
+        }
+
+        // 1b. 如果 metadataJson 没有填满所有文件槽，用 imageIds/shotTimes 数组补齐
+        for (int i = metaList.size(); i < files.length; i++) {
             BatchImageMetadata m = new BatchImageMetadata();
             m.setImageId(imageIds != null && i < imageIds.length ? imageIds[i] : null);
             if (shotTimes != null && i < shotTimes.length && shotTimes[i] != null) {
                 try { m.setShotTime(LocalDate.parse(shotTimes[i])); } catch (Exception ignored) {}
             }
             metaList.add(m);
+        }
+
+        // 1c. 安全兜底：imageId 为空时生成 UUID，shotTime 为空时使用今天
+        for (BatchImageMetadata m : metaList) {
+            if (m.getImageId() == null || m.getImageId().isBlank()) {
+                m.setImageId(UUID.randomUUID().toString());
+            }
+            if (m.getShotTime() == null) {
+                m.setShotTime(LocalDate.now());
+            }
         }
 
         List<RecognitionResultDto> results = new ArrayList<>();
@@ -850,11 +912,18 @@ public class RecognitionService {
 
             try {
                 // 用 WebClient 调算法（使用内存中的字节，不依赖临时文件）
+                // mock 模式下跳过算法调用（与 submit() 保持一致），避免等待失效的 ngrok 超时
                 AlgorithmClientService.AlgorithmResult algoResult =
-                        callAlgorithmWithWebClient(fileBytes, originalFilename, contentType, record.getId());
+                        mockEnabled ? null : callAlgorithmWithWebClient(fileBytes, originalFilename, contentType, record.getId());
 
                 if (algoResult == null) {
-                    throw new RuntimeException("算法服务无响应");
+                    if (!mockEnabled) throw new RuntimeException("算法服务无响应");
+                    algoResult = AlgorithmClientService.AlgorithmResult.builder()
+                            .identityId("demo_mandrill_001")
+                            .confidence(0.862)
+                            .relatedImages(Collections.emptyList())
+                            .build();
+                    log.info("批量算法不可用，使用演示结果: identityId=demo_mandrill_001, confidence=0.862");
                 }
 
                 // 处理 heatmap（算法返回的是 URL，直接使用）
@@ -874,11 +943,11 @@ public class RecognitionService {
                         record.getId(), "done", algoResult.getIdentityId(),
                         algoResult.getConfidence(), individual.getId(), heatmapPath);
 
-                //  插 individual_image，前端上传的图片 shot_time 设为 null
+                //  插 individual_image，使用元数据中的 shot_time（兜底为今天）
                 IndividualImage img = new IndividualImage();
                 img.setIndividualId(individual.getId());
                 img.setImagePath(savePath.toString());
-                img.setShotTime(null);  // 前端上传的图片，shot_time 设为 null
+                img.setShotTime(meta.getShotTime());   // ← 使用前端传入的拍摄日期（已兜底为今天）
                 img.setRecognitionRecordId(record.getId());
                 individualImageMapper.insert(img);
 

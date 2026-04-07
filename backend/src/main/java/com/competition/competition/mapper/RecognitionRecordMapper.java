@@ -28,4 +28,16 @@ public interface RecognitionRecordMapper {
                                 @Param("startTime") LocalDateTime startTime,
                                 @Param("endTime") LocalDateTime endTime,
                                 @Param("recordId") Long recordId);
+
+    /** 删除单条识别记录 */
+    int deleteById(@Param("id") Long id);
+
+    /** 清空全表（仅用于测试数据清理） */
+    int deleteAll();
+
+    /** 插入时指定 created_at（用于演示数据植入） */
+    int insertWithCreatedAt(RecognitionRecord record);
+
+    /** 统计指定 operation_status 的记录数 */
+    int countByOperationStatus(@Param("operationStatus") String operationStatus);
 }

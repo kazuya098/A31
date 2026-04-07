@@ -36,4 +36,7 @@ public class RecordListDto {
 
     /** 识别状态：pending / done / failed，对应 recognition_record.status */
     private String status;
+
+    /** 上传图片路径（转换为可访问 URL），用于列表缩略图 */
+    private String imagePath;
 }

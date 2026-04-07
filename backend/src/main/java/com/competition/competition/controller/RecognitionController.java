@@ -22,17 +22,20 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/recognition")
 @RequiredArgsConstructor
+@CrossOrigin
 public class RecognitionController {
 
     private final RecognitionService recognitionService;
 
-    /** 批量上传识别：files[] + imageIds[] + shotTimes[]，按下标一一对应 */
+    /** 批量上传识别：files[] + imageIds[] + shotTimes[]，按下标一一对应；
+     *  也接受可选的 metadataJson（JSON 数组，每元素含 image_id / shot_time）。 */
     @PostMapping(value = "/batch-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Result<List<RecognitionResultDto>> batchUpload(
             @RequestParam("files") MultipartFile[] files,
             @RequestParam(value = "type", defaultValue = "human") String type,
             @RequestParam(value = "imageIds", required = false) String[] imageIds,
             @RequestParam(value = "shotTimes", required = false) String[] shotTimes,
+            @RequestParam(value = "metadataJson", required = false) String metadataJson,
             HttpServletRequest request) throws IOException {
         if (files == null || files.length == 0) {
             return Result.fail(ResultCode.BAD_REQUEST, "请选择至少一张图片");
@@ -42,7 +45,7 @@ public class RecognitionController {
         }
         Long operatorId = (Long) request.getAttribute("currentUserId");
         List<RecognitionResultDto> results =
-                recognitionService.submitBatch(files, type, operatorId, imageIds, shotTimes);
+                recognitionService.submitBatch(files, type, operatorId, imageIds, shotTimes, metadataJson);
         return Result.ok(results);
     }
 
@@ -101,5 +104,21 @@ public class RecognitionController {
         return recognitionService.getIndividualReport(individualId)
                 .map(Result::ok)
                 .orElseGet(() -> Result.fail(ResultCode.NOT_FOUND, "个体不存在"));
+    }
+
+    /** 删除单条识别记录（同时级联删除对应 individual_image 行）。
+     *  前端 recognition.js deleteRecognitionRecord(id) 调用此接口。 */
+    @DeleteMapping("/records/{id}")
+    public Result<Void> deleteRecord(@PathVariable Long id) {
+        recognitionService.deleteRecord(id);
+        return Result.ok(null);
+    }
+
+    /** 隐藏的测试数据清理接口：清空 recognition_record 和 individual_image，不删除 individual。
+     *  仅在开发/演示环境调用：DELETE /api/recognition/admin/purge-test-data */
+    @DeleteMapping("/admin/purge-test-data")
+    public Result<String> purgeTestData() {
+        recognitionService.purgeTestData();
+        return Result.ok("recognition_record 和 individual_image 已清空，individual 表保留。");
     }
 }

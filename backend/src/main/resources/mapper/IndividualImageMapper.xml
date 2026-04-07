@@ -22,4 +22,13 @@
         WHERE individual_id = #{individualId}
         ORDER BY shot_time ASC, created_at ASC
     </select>
+
+    <delete id="deleteByRecordId">
+        DELETE FROM individual_image WHERE recognition_record_id = #{recordId}
+    </delete>
+
+    <delete id="deleteAll">
+        DELETE FROM individual_image
+    </delete>
+
 </mapper>

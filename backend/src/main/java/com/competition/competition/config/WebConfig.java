@@ -1,5 +1,6 @@
 package com.competition.competition.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -77,6 +78,11 @@ public class WebConfig implements WebMvcConfigurer {
     }
 
     @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
+    }
+
+    @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
@@ -90,9 +96,14 @@ public class WebConfig implements WebMvcConfigurer {
     }
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // 映射/uploads/目录到/static/uploads/路径，支持远程访问图片
-        registry.addResourceHandler("/static/uploads/**")
+        // 映射 /api/uploads/** → 本地上传目录。
+        // 路径必须带 /api 前缀，使 Vite 代理能将图片请求转发到后端。
+        registry.addResourceHandler("/api/uploads/**")
                 .addResourceLocations(Paths.get(uploadPath).toAbsolutePath().normalize().toUri().toString() + "/");
+
+        // 映射 /api/data/** → Data/Mandrillus/examples 演示图片目录
+        registry.addResourceHandler("/api/data/**")
+                .addResourceLocations(Paths.get("../Data/Mandrillus/examples").toAbsolutePath().normalize().toUri().toString() + "/");
 
         // 处理 favicon.ico 请求
         registry.addResourceHandler("/**.ico", "/favicon.ico")

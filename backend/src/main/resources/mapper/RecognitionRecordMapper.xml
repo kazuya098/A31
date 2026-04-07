@@ -57,4 +57,25 @@
         </where>
         ORDER BY created_at DESC
     </select>
+
+    <delete id="deleteById">
+        DELETE FROM recognition_record WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteAll">
+        DELETE FROM recognition_record
+    </delete>
+
+    <insert id="insertWithCreatedAt" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO recognition_record
+            (user_id, image_path, status, identity_id, confidence, heatmap_path, type, operation_status, individual_id, created_at, updated_at)
+        VALUES
+            (#{userId}, #{imagePath}, #{status, jdbcType=VARCHAR}, #{identityId}, #{confidence}, #{heatmapPath, jdbcType=VARCHAR},
+             #{type, jdbcType=VARCHAR}, #{operationStatus, jdbcType=VARCHAR}, #{individualId}, #{createdAt}, #{createdAt})
+    </insert>
+
+    <select id="countByOperationStatus" resultType="int">
+        SELECT COUNT(*) FROM recognition_record WHERE operation_status = #{operationStatus}
+    </select>
+
 </mapper>
