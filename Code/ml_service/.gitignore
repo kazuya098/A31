@@ -1,0 +1,16 @@
+# Large deployment artifacts stay outside the source repository.
+weights/
+gallery/
+static/*
+!static/.gitkeep
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+*.npy
+
+# Local configuration and Python runtime files.
+.env
+.env.*
+__pycache__/
+*.py[cod]
