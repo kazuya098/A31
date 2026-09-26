@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mandrill-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-mandrill_secret}
+      MYSQL_DATABASE: ${DB_NAME:-mandrill}
+      MYSQL_USER: ${DB_USERNAME:-mandrill}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-mandrill_secret}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/src/main/resources/sql/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mandrill-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8080
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-mandrill}
+      DB_USERNAME: ${DB_USERNAME:-mandrill}
+      DB_PASSWORD: ${DB_PASSWORD:-mandrill_secret}
+      ALGORITHM_SERVICE_URL: http://ml-service:8000/predict
+      UPLOAD_PATH: /app/uploads
+      ALGORITHM_MOCK_ENABLED: "false"
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost}
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploads_data:/app/uploads
+
+  ml-service:
+    build:
+      context: ./Code/ml_service
+      dockerfile: Dockerfile
+    container_name: mandrill-ml-service
+    restart: unless-stopped
+    environment:
+      MODEL_PATH: /app/models/clean_model.pth
+      GALLERY_DIR: /app/gallery
+      CONFIDENCE_THRESHOLD: "0.0"
+    ports:
+      - "8000:8000"
+    volumes:
+      - model_data:/app/models
+      - gallery_data:/app/gallery
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api
+    container_name: mandrill-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  mysql_data:
+  uploads_data:
+  model_data:
+  gallery_data:

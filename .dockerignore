@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+
+# 依赖
+node_modules
+**/node_modules
+
+# 构建产物
+dist
+build
+target
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+*.properties
+!application-example.properties
+
+# IDE
+.idea
+.vscode
+.cursor
+*.iml
+
+# 数据集与模型
+Data/**/*.jpg
+Data/**/*.jpeg
+Data/**/*.png
+*.pth
+*.pt
+*.npy
+*.npz
+
+# 上传文件
+uploads
+
+# 日志
+*.log
+logs
+
+# 操作系统
+.DS_Store
+Thumbs.db

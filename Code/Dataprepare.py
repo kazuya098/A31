@@ -72,8 +72,8 @@ if __name__ == "__main__":
         transforms.ToTensor(), # 转为PyTorch张量，并缩放到[0,1]
         ])
     
-    # 确定图像集的路径
-    img_directory = r'D:\fuchuang\Images'
+    # 图像集路径：通过环境变量或命令行参数指定，避免硬编码本地路径
+    img_directory = os.environ.get('MANDRILL_IMAGE_DIR', r'./Data/Mandrillus/examples')
 
     # 创建训练集和测试集Dataset实例
     train_dataset = MFDataset(dataframe=train_df, img_dir=img_directory, transform=data_transforms)

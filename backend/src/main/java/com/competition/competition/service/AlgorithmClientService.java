@@ -20,7 +20,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AlgorithmClientService {
 
-    @Value("${algorithm.service.url:https://retrolental-georgette-municipally.ngrok-free.dev/predict}")
+    @Value("${algorithm.service.url:http://localhost:8000/predict}")
     private String algorithmUrl;
 
     @Value("${algorithm.service.timeout-seconds:30}")
@@ -46,8 +46,6 @@ public class AlgorithmClientService {
                 // 使用标准的 boundary 格式
                 String boundary = "----WebKitFormBoundary" + System.currentTimeMillis();
                 conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
-                // 添加 ngrok 所需的 header（如果是通过 ngrok 暴露的服务）
-                conn.setRequestProperty("ngrok-skip-browser-warning", "true");
                 conn.setConnectTimeout(timeoutSeconds * 1000);
                 conn.setReadTimeout(timeoutSeconds * 1000);
 

@@ -13,7 +13,6 @@ service.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers['X-Auth-Token'] = token; // 将token添加到请求头
-      config.headers['ngrok-skip-browser-warning'] = '69420';
     }
     return config;
   },

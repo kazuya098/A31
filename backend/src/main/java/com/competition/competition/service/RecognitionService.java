@@ -59,7 +59,7 @@ public class RecognitionService {
     @Value("${upload.path:./uploads}")
     private String uploadPath;
 
-    @Value("${algorithm.service.url:https://retrolental-georgette-municipally.ngrok-free.dev/predict}")
+    @Value("${algorithm.service.url:http://localhost:8000/predict}")
     private String algorithmUrl;
 
     @Value("${algorithm.service.timeout-seconds:30}")
@@ -601,8 +601,6 @@ public class RecognitionService {
                 // 使用标准的 boundary 格式
                 String boundary = "----WebKitFormBoundary" + System.currentTimeMillis();
                 conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
-                // 添加 ngrok 所需的 header（如果是通过 ngrok 暴露的服务）
-                conn.setRequestProperty("ngrok-skip-browser-warning", "true");
                 conn.setConnectTimeout(timeoutSeconds * 1000);
                 conn.setReadTimeout(timeoutSeconds * 1000);
 
@@ -912,7 +910,7 @@ public class RecognitionService {
 
             try {
                 // 用 WebClient 调算法（使用内存中的字节，不依赖临时文件）
-                // mock 模式下跳过算法调用（与 submit() 保持一致），避免等待失效的 ngrok 超时
+                // mock 模式下跳过算法调用（与 submit() 保持一致）
                 AlgorithmClientService.AlgorithmResult algoResult =
                         mockEnabled ? null : callAlgorithmWithWebClient(fileBytes, originalFilename, contentType, record.getId());
 
@@ -1050,7 +1048,6 @@ public class RecognitionService {
 
             AlgorithmRawResponse raw = webClient.post()
                     .uri(algorithmUrl)
-                    .header("ngrok-skip-browser-warning", "true")
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .body(BodyInserters.fromMultipartData(multipartBuilder.build()))
                     .retrieve()

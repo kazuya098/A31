@@ -38,6 +38,9 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${upload.path:./uploads}")
     private String uploadPath;
 
+    @Value("${cors.allowed-origins:http://localhost:5173}")
+    private String allowedOrigins;
+
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
         // 将根路径 "/" 重定向到 "/api/health"
@@ -49,12 +52,14 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        // 允许所有静态资源的跨域访问（包括上传的图片）
+        // 生产环境通过 cors.allowed-origins 环境变量限制具体域名，避免使用通配符
+        String[] origins = allowedOrigins.split(",");
         registry.addMapping("/**")
-                .allowedOriginPatterns("*")
+                .allowedOriginPatterns(origins)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .allowCredentials(false);
+                .allowCredentials(false)
+                .maxAge(3600);
     }
 
     /**
